@@ -308,67 +308,108 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
   );
 
   // ══ 3в · филтърът · сметката · тактът · скриването ═══════════════════
-  // ══ 3б3 · ДЛ-Т56 · ГЛАВАТА СТОИ, СКРОЛЪТ ТЕЧЕ ══════════════════════════
+  // ══ 3б3 · ЕДИН СКРОЛЕР · главата стои НАВСЯКЪДЕ ═════════════════════════
   //
-  // Негово, 08.09 (запис 64), ДОСЛОВНО: „и за таблицата, и за диаграмата
-  // хоризонталния скрол. **Важно е това, скролът**" · и „**отгоре е филтърът**".
+  // Негово, 08.09 (запис 64): „и за таблицата, и за диаграмата хоризонталния
+  // скрол. **Важно е това, скролът**" · и „**отгоре е филтърът**".
   //
-  // Дотук главата беше `position: static` и просто избягваше нагоре: блокът носи
-  // `overflow-x: auto` заради хоризонталния скрол, а CSS не позволява едната ос да
-  // е `auto`, а другата `visible` — тъй че блокът беше скролер и по вертикала,
-  // мълчаливо и без таван, и залепеното вътре нямаше за какво да се лепи.
+  // Негово, 13.09 (запис 223) — със снимка на счупеното: „Поправи залепения
+  // хедър навсякъде… и разшири заключените редове с еднаква ширина с таблицата
+  // и календар под тях… скрол по хоризонтала на таблицата и календара, но да
+  // има лента отляво и отдясно зона, в която скролът по вертикала работи винаги."
   //
-  // Мери се НА ДЕЛО: скролва се вътре в блока и се пита къде е главата. Два пъти,
-  // защото първите пиксели вдигат заглавието НАД таблицата и това е вярно —
-  // залепването почва след него.
-  razdel = '3б3 · главата стои, скролът тече';
+  // ЦЕНАТА, ПЛАТЕНА СЪЩИЯ ДЕН · тази проверка ВЕЧЕ БЕШЕ ЗЕЛЕНА над счупен екран.
+  // Тя питаше блока (`overflow != visible`, `max-height != none`) и първата
+  // клетка на главата — а първата клетка е и залепена КОЛОНА, тъй че беше
+  // `sticky` по друга причина. Останалите глави бяха `position: relative` и
+  // отплуваха; на снимката му се виждаше само редът с филтъра, увиснал между
+  // данните. Проверка, която пита ЕДНА клетка, не проверява ГЛАВА.
+  //
+  // Оттук се мери ПОВЕДЕНИЕТО и се мери ВСЯКА глава.
+  razdel = '3б3 · един скролер · главата стои';
   const zalepenoto = await p.evaluate(() => {
+    const skrol = document.querySelector<HTMLElement>('[data-skrol]');
+    const zalepeno = document.querySelector<HTMLElement>('.zalepeno');
     const tabl = document.querySelector<HTMLTableElement>('[data-reshetka="zadachi"]');
-    const blok = tabl?.closest<HTMLElement>('.darvo-blok') ?? null;
-    const glava = tabl?.querySelector<HTMLElement>('thead tr:first-child th') ?? null;
-    const filtar = tabl?.querySelector<HTMLElement>('thead tr.filtar td') ?? null;
-    const lyava = tabl?.querySelector<HTMLElement>('tbody .zalepena-kolona') ?? null;
-    if (blok === null || glava === null || filtar === null || lyava === null) return 'липсва възел';
-    const bs = getComputedStyle(blok);
-    const gs = getComputedStyle(glava);
-    const fs = getComputedStyle(filtar);
-    // ПОВЕДЕНИЕТО се мери само когато има какво да се скролва · при четири реда
-    // главата няма къде да избяга и „стои" би било вярно и без нито едно правило
-    const gore = (): number => Math.round(glava.getBoundingClientRect().top);
+    if (skrol === null || zalepeno === null || tabl === null) return 'липсва възел';
+    const glavi = [...tabl.querySelectorAll<HTMLTableRowElement>('thead tr')];
+    const lyava = tabl.querySelector<HTMLElement>('tbody .zalepena-kolona');
+    if (glavi.length !== 3 || lyava === null)
+      return `глави ${glavi.length} · лява ${lyava !== null}`;
+
+    // ЕДИН вертикален скролер в целия прозорец · това е цялата поправка
+    // СТРУКТУРНО, не по текущото препълване: при малко данни блокът не се е
+    // препълнил и „скролери 0" би било вярно и над счупен екран. Пита се КОЙ
+    // МОЖЕ да скролва по вертикала, не кой го прави в този миг.
+    const skroleri = [...document.querySelectorAll<HTMLElement>('main.prozorets *')]
+      .filter((e) => {
+        const c = getComputedStyle(e);
+        return c.overflowY === 'auto' || c.overflowY === 'scroll';
+      })
+      .map((e) => e.className.split(' ')[0] ?? e.tagName);
+
+    const gorno = (r: HTMLTableRowElement): number =>
+      Math.round((r.cells[2] ?? r.cells[0])!.getBoundingClientRect().top);
     const nalyavo = (): number => Math.round(lyava.getBoundingClientRect().left);
+
     let stoiPriSkrol = true;
-    if (blok.scrollHeight > blok.clientHeight) {
-      blok.scrollTop = 300;
-      const a = gore();
-      blok.scrollTop = 900;
-      stoiPriSkrol = a === gore();
-      blok.scrollTop = 0;
+    if (skrol.scrollHeight > skrol.clientHeight) {
+      skrol.scrollTop = 300;
+      const a = glavi.map(gorno).join();
+      skrol.scrollTop = 900;
+      stoiPriSkrol = a === glavi.map(gorno).join();
+      skrol.scrollTop = 0;
     }
     let stoiNastrani = true;
-    if (blok.scrollWidth > blok.clientWidth) {
-      blok.scrollLeft = 400;
+    if (skrol.scrollWidth > skrol.clientWidth) {
+      skrol.scrollLeft = 400;
       const a = nalyavo();
-      blok.scrollLeft = 800;
+      skrol.scrollLeft = 800;
       stoiNastrani = a === nalyavo();
-      blok.scrollLeft = 0;
+      skrol.scrollLeft = 0;
     }
+
+    // ВСЯКА глава в прозореца, не само тази · негово: „навсякъде"
+    const vsichkiGlavi = [...skrol.querySelectorAll<HTMLTableRowElement>('thead tr')].filter(
+      (r) => r.cells.length > 0,
+    );
+    const nezalepeni = vsichkiGlavi.filter(
+      (r) => getComputedStyle(r.cells[0]!).position !== 'sticky',
+    ).length;
+
+    // ЪГЪЛЪТ · клетката, която е и глава, и колона, стои НАД данните
+    const agal = tabl.querySelector<HTMLElement>('thead .zalepena-glava.zalepena-kolona');
+    const dolu = tabl.querySelector<HTMLElement>('tbody .zalepena-kolona');
+
     return [
-      // БЛОКЪТ е скролерът · и по двете оси, с таван на височината
-      bs.overflowX !== 'visible' && bs.overflowY !== 'visible',
-      bs.maxHeight !== 'none',
-      // ГЛАВАТА и ФИЛТЪРЪТ се лепят за него · `top` е ЧИСЛО, не `auto`
-      gs.position === 'sticky' && gs.top !== 'auto',
-      fs.position === 'sticky' && fs.top !== 'auto',
-      // и филтърът стои ПОД главата, не върху нея
-      Number.parseFloat(fs.top) > Number.parseFloat(gs.top),
-      stoiPriSkrol,
-      stoiNastrani,
+      `скролери ${skroleri.join(' + ') || 'няма'}`,
+      `лентите извън скролера ${!skrol.contains(zalepeno)}`,
+      // „еднаква ширина с таблицата и календар под тях" · до пиксел
+      `еднаква ширина ${Math.round(zalepeno.getBoundingClientRect().width) === Math.round(skrol.getBoundingClientRect().width)}`,
+      `хоризонтален скрол ${skrol.scrollWidth > skrol.clientWidth}`,
+      `трите глави лепят ${glavi.every((r) => [...r.cells].every((c) => getComputedStyle(c).position === 'sticky'))}`,
+      `подредени ${glavi.map((r) => Number.parseFloat(getComputedStyle(r.cells[0]!).top)).every((v, i, a) => i === 0 || v > a[i - 1]!)}`,
+      `стои при скрол ${stoiPriSkrol}`,
+      `стои настрани ${stoiNastrani}`,
+      `незалепени глави ${nezalepeni}`,
+      `ъгълът е над данните ${Number(getComputedStyle(agal!).zIndex) > Number(getComputedStyle(dolu!).zIndex)}`,
     ].join(' · ');
   });
   proveri(
-    'Т56 · блокът е скролерът · главата и филтърът се лепят за НЕГО и стоят',
+    'Т56 · един скролер · лентите са извън него и са със СЪЩАТА ширина · всяка глава лепи',
     zalepenoto,
-    'true · true · true · true · true · true · true',
+    [
+      'скролери tyalo-skrol',
+      'лентите извън скролера true',
+      'еднаква ширина true',
+      'хоризонтален скрол true',
+      'трите глави лепят true',
+      'подредени true',
+      'стои при скрол true',
+      'стои настрани true',
+      'незалепени глави 0',
+      'ъгълът е над данните true',
+    ].join(' · '),
   );
 
   razdel = '3в · филтър · сбор · такт';

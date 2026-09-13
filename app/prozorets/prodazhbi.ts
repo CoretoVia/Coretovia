@@ -206,6 +206,10 @@ export function narisuvayProdazhbi(k: KonteksNaEkrana): void {
       </section>`;
   };
 
+  // ТЯЛОТО КАЗВА, ЧЕ Е С РЕШЕТКА · вж. `app/stil.css` · „ЕДИН СКРОЛЕР".
+  // Продажби също носи стационарни ленти отгоре и таблици отдолу, тъй че и тук
+  // главата трябва да стои (негово, 13.09 · запис 223: „навсякъде").
+  k.tyalo.classList.add('tyalo-s-reshetka');
   sloji(
     k.tyalo,
     h`
@@ -229,11 +233,13 @@ export function narisuvayProdazhbi(k: KonteksNaEkrana): void {
       </div>
     </div>
     <p class="greshka" data-greshka></p>
+    <div class="tyalo-skrol" data-skrol>
     ${dumiteHTML(DUMI_OT_KNIGATA.prodazhbi)}
     ${kalkulatorHTML()}
     ${v.tablitsi.map(tablitsaHTML)}
     <p class="pod-tablitsata" data-proverkite>Проверката е СМЕТНАТА: цена минус вноските от същата страна. Продажба с нулев остатък е ПЛАТЕНА; ЗАВЪРШЕНА е онази, при която е дошъл и Акт 16 (негово, 05.09). Нулата значи платено и се записва като сверка (правило 7). Колоната „Ключ" стои в ${String(KLYUCH_KOLONA_PRODAZHBI)}-та колона на листа, скрита.</p>
-    ${iznosVestHTML()}`,
+    ${iznosVestHTML()}
+    </div>`,
   );
 
   zakachiZebrata(k.tyalo);
