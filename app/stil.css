@@ -1230,11 +1230,29 @@ body.vlacha-shirina {
 .ekran .darvo-blok .reshetka.darvo td.takt.lenta.speshno {
   background: var(--cherveno);
 }
-/* „Скрий Диаграма" крие КОЛОНИТЕ на такта, а не съседен блок */
-.ekran .darvo-blok .reshetka.darvo.bez-taktove td.takt,
-.ekran .darvo-blok .reshetka.darvo.bez-taktove th.takt {
-  display: none;
+/* ОБОБЩАВАЩАТА ЛЕНТА НА РОДИТЕЛЯ · негово, 13.09 (запис 210): „календара да
+   обхваща всички редове". Имотът и Обектът нямат своя работа във времето —
+   тяхната лента е ОБХВАТЪТ на онова, което стои под тях. Затова изглежда
+   различно от лента на задача: тънка черта, прилепена към горния ръб, в
+   цвета на текста, а не в зелено. Така окото различава „ето докъде стига
+   всичко отдолу" от „ето тази работа".
+
+   Формата е от MS Project, откъдето той сам взе образеца (запис 194). Клетката
+   остава празна: името вече стои в таблицата отляво, а срок върху сбор от
+   много задачи не значи нищо. */
+.ekran .darvo-blok .reshetka.darvo td.takt.lenta.obobshtavashta {
+  background: transparent;
+  position: relative;
 }
+.ekran .darvo-blok .reshetka.darvo td.takt.lenta.obobshtavashta::before {
+  content: "";
+  position: absolute;
+  inset: 2px 0 auto 0;
+  height: 4px;
+  background: var(--mastilo);
+  opacity: 0.55;
+}
+
 /* РЕДЪТ НА ЕДНО ДВИЖЕНИЕ · негово, 11.09 (запис 193): Сметките стоят под своя
    Имот, Обект или Бизнес и се крият с ЕДИН бутон. Редът е поглед, не вход —
    затова е в курсив и по-блед, а само парите носят цвета на страната си. */

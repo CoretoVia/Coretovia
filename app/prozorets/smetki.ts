@@ -613,7 +613,17 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
     return h`<th data-kolona="${klyuch}" class="${kol.vid}"${podskazka(kol.pomosht)}>${kol.kratko ?? kol.ime}</th>`;
   });
 
-  /** Редът на ДДС в лентата · СМЯТА се от таблицата, не е движение (една истина). */
+  /**
+   * Редът на ДДС в лентата · СМЯТА се от таблицата, не е движение (една истина).
+   *
+   * И ТОЙ ВЛИЗА В КАЛЕНДАРА · негово, 13.09 (запис 210): „календара да обхваща
+   * ВСИЧКИ редове". Дотук тези редове носеха твърдо празни клетки, макар всеки
+   * от тях да си има месец и сума — тоест единственото, което календарът иска.
+   * Мълчаха, и никой брояч не ги отчиташе като изпуснати.
+   *
+   * Групата остава без число в такта: тя е сбор на месеците под себе си и би
+   * броила едно и също два пъти в колоната.
+   */
   const ddsHTML = (strana: Strana): Zapechatan => {
     const redove = ddsNa(strana);
     if (redove.length === 0) return h``;
@@ -623,7 +633,7 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
         ${prazniTaktove}
       </tr>${redove.map(
         (m) =>
-          h`<tr class="red dds" data-dds="${m.mesets}"><td class="kletka" colspan="${KOLONI.length - 1}" translate="no">ДДС ${m.mesets} · ${m.strana === 'razhod' ? 'за внасяне' : 'за възстановяване'}</td><td class="kletka evro" translate="no">${pishi(m.suma)}</td>${prazniTaktove}</tr>`,
+          h`<tr class="red dds" data-dds="${m.mesets}"><td class="kletka" colspan="${KOLONI.length - 1}" translate="no">ДДС ${m.mesets} · ${m.strana === 'razhod' ? 'за внасяне' : 'за възстановяване'}</td><td class="kletka evro" translate="no">${pishi(m.suma)}</td>${taktNaReda(`${m.mesets}-01`, m.suma)}</tr>`,
       )}`;
   };
 
@@ -666,7 +676,7 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
         (z) =>
           h`<tr class="red zadacha" data-zadacha="${z.id}"><td class="kletka prazna"></td><td class="kletka tekst" translate="no">${z.ime}</td><td class="kletka prazna"></td><td class="kletka prazna"></td><td class="kletka evro" translate="no">${pishi(
             -z.byudzhet_st,
-          )}</td>${taktNaReda(z.data, -z.byudzhet_st)}</tr>`,
+          )}</td>${taktNaReda(z.data, -z.byudzhet_st, z.ime)}</tr>`,
       )}`;
   };
 
@@ -755,15 +765,25 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
           ' · ',
         )}. Бюджет без дата не влиза в календара и в сбора; попълни Начало в Управление.</p>`;
 
-  /** Колко реда падат ИЗВЪН колоните на календара · те са в сбора, но не се виждат. */
-  const izvanKalendara = (sektsii: readonly Sektsiya[]): number =>
-    sektsii.reduce(
+  /**
+   * Колко реда падат ИЗВЪН колоните на календара · те са в сбора, но не се виждат.
+   *
+   * БРОЯТ СЕ И ЗАДАЧИТЕ С БЮДЖЕТ, не само паричните редове. Дотук те бяха
+   * изключение без причина: задача, чиято дата е извън показаните колони, просто
+   * изчезваше от календара, докато същото за ред с пари се КАЗВАШЕ. Негово, 13.09
+   * (запис 210): „календара да обхваща всички редове" — а онова, което не е
+   * обхванато, поне се брои (правило 12).
+   */
+  const izvanKalendara = (sektsii: readonly Sektsiya[]): number => {
+    const izvan = (data: string): boolean => kolonataNa(data) < 0;
+    const vSektsiite = sektsii.reduce(
       (a, sek) =>
-        a +
-        sek.redove.filter((r) => kolonataNa(r.data === '' ? denNaMeseca(r.mesets) : r.data) < 0)
-          .length,
+        a + sek.redove.filter((r) => izvan(r.data === '' ? denNaMeseca(r.mesets) : r.data)).length,
       0,
     );
+    const vZadachite = zadachite.redove.filter((z) => izvan(z.data)).length;
+    return vSektsiite + vZadachite;
+  };
 
   const stranaHTML = (
     strana: Strana,

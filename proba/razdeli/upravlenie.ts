@@ -170,9 +170,60 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
     await tekstNa(p, '[data-sverka="darvo"]'),
     'видими 4 от 4 · родители 3 · задачи 1 · сираци 0',
   );
+  // ЛЕНТАТА НА ЗАДАЧАТА · вече не е първата на екрана. Негово, 13.09 (запис
+  // 210): „календара да обхваща ВСИЧКИ редове" — и Имотът, и Обектът носят своя
+  // ОБОБЩАВАЩА лента над задачите си, тъй че селекторът трябва да ги отличи.
   proveri(
-    'Гантът · една лента · червена, защото е Спешно и Важно',
-    await p.$eval('td.takt.lenta', (e) => e.classList.contains('speshno')),
+    'Гантът · лентата на задачата е червена, защото е Спешно и Важно',
+    await p.$eval('td.takt.lenta:not(.obobshtavashta)', (e) => e.classList.contains('speshno')),
+    true,
+  );
+  // ══ И РОДИТЕЛИТЕ ВЛЯЗОХА В КАЛЕНДАРА · негово, 13.09 (запис 210) ═══
+  proveri(
+    'колко РЕДА носят обобщаваща лента · родителите с работа под себе си',
+    await p.$$eval(
+      'tr.red.roditel',
+      (es) => es.filter((r) => r.querySelector('td.takt.lenta.obobshtavashta') !== null).length,
+    ),
+    // ЕДИН · трите родителя са Имот · Обект · Бизнес, а задачата е под ЕДИН от
+    // тях. Само той има какво да обобщава; другите двама нямат работа под себе си
+    // и НЕ получават лента — родител без деца не се преструва, че има обхват.
+    1,
+  );
+  proveri(
+    'обобщаващата е ПРАЗНА · името вече стои в таблицата отляво',
+    (
+      await p.$$eval('td.takt.lenta.obobshtavashta', (es) =>
+        es.map((e) => e.textContent?.trim() ?? '').join(''),
+      )
+    ).length,
+    0,
+  );
+  // И ОБХВАЩА РАБОТАТА ПОД СЕБЕ СИ. Мери се най-широкото: обобщаващите ленти
+  // заедно трябва да покриват всяка лента на задача — инак родител би „свършил"
+  // преди детето си и календарът пак би лъгал, само по-тихо.
+  proveri(
+    'обобщаващите покриват всяка лента на задача · от най-ранната до най-късната',
+    await p.$$eval('tr.red', (redove) => {
+      const granitsi = (izbor: string): [number, number] | null => {
+        let parva = -1;
+        let posledna = -1;
+        for (const r of redove) {
+          if (!r.matches(izbor)) continue;
+          const takt = [...r.querySelectorAll('td.takt')];
+          for (let i = 0; i < takt.length; i += 1) {
+            if (takt[i]?.classList.contains('lenta') !== true) continue;
+            if (parva === -1 || i < parva) parva = i;
+            if (i > posledna) posledna = i;
+          }
+        }
+        return parva === -1 ? null : [parva, posledna];
+      };
+      const r = granitsi('tr.red.roditel');
+      const z = granitsi('tr.red.zadacha');
+      if (r === null || z === null) return false;
+      return r[0] <= z[0] && r[1] >= z[1];
+    }),
     true,
   );
   // негово, 12.09 (запис 201): затова клетката носи и името, и числото

@@ -505,9 +505,13 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
   await natisniButon(p, 'skriy-dela');
   await p.waitForSelector('[data-sbor-zadachi]');
   proveri(
-    'върнат в ПАРИ от бутона на Сметки · в календара стои БЮДЖЕТЪТ, не текстът',
+    // И ИМЕТО, И ЧИСЛОТО · негово, 12.09 (запис 201): „Когато има едновременно и
+    // бюджет и текст на задачата да се показват и двете в едно и също поле."
+    // Коментарът в кода го обещаваше от същия ден, а извикването не подаваше името
+    // — поправено на 13.09 заедно с останалите редове без календар.
+    'върнат в ПАРИ от бутона на Сметки · клетката носи И името, И бюджета',
     await p.$eval('tr.red.zadacha td.takt.evro', (e) => (e as HTMLElement).innerText.trim()),
-    EVRO_MINUS_250000,
+    `Сондаж · ${EVRO_MINUS_250000}`,
   );
   await p.goto(`${ADRES}#/upravlenie`);
   await p.waitForSelector('tr.red.dvizhenie');
