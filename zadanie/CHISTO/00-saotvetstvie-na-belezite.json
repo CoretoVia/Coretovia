@@ -5,7 +5,7 @@
     "ИЗ": 928,
     "ИН": 263,
     "ВП": 147,
-    "ДЛ": 87
+    "ДЛ": 88
   },
   "redove": [
     {
@@ -1392,6 +1392,12 @@
       "staro": "Т60",
       "fayl": "docs/registar-na-dalga.json",
       "novo": "ДЛ-Т60",
+      "vid": "ДЛ"
+    },
+    {
+      "staro": "Т61",
+      "fayl": "docs/registar-na-dalga.json",
+      "novo": "ДЛ-Т61",
       "vid": "ДЛ"
     },
     {

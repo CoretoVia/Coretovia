@@ -15,6 +15,7 @@
  */
 
 import { NOMENKLATURA } from '../../src/model/osnova.js';
+import type { Izbran } from '../../src/porta/porta.js';
 import type { KonteksNaEkrana } from '../kontekst.js';
 import { otvoriIzskachasht } from './izskachasht.js';
 import { pokazhiMenyu, type Tochka } from './menyu.js';
@@ -47,7 +48,13 @@ function zadachaIliSreshta(
   zaglavie: string,
   nomerNaVida: number | null,
   zalozhen: number | null,
+  /** родителят, когато точката идва от десния бутон върху ред · инак празно */
+  kam = '',
 ): Tochka {
+  const dadeni = {
+    ...(kam === '' ? {} : { kam: { tekst: kam } }),
+    ...(zalozhen === null ? {} : { vid: { nomer: zalozhen } }),
+  };
   return {
     klyuch,
     ime,
@@ -58,7 +65,7 @@ function zadachaIliSreshta(
         tablitsa: 'zadachi',
         komanda: 'upravlenie.dobaviZadacha',
         zaglavie,
-        ...(zalozhen === null ? {} : { dadeni: { vid: { nomer: zalozhen } } }),
+        ...(Object.keys(dadeni).length === 0 ? {} : { dadeni }),
       }),
   };
 }
@@ -125,6 +132,57 @@ export function tochkiteNaSazdavaneto(k: KonteksNaEkrana): readonly Tochka[] {
  * ред с пари"). Те слизат тук от лентата заедно с останалите, вместо да
  * изчезнат тихо с темата, в която живееха.
  */
+/**
+ * B5 · ТРИ ФУНКЦИИ ВЪРХУ ОБЕКТ, ЧЕТИРИ ВЪРХУ ИМОТ.
+ *
+ * `zadanie/03` B5, ДОСЛОВНО: „Да може тук да се ползва десния бутон и да се дава
+ * опция за Всеки Имот или Обект да се избира и добавят **тези 3 функции** за
+ * добавяне, а за Имота да има **4**, но 4тия избор Голямо дело да е неактивно, а
+ * само да се показва с по затъмнен текст и да се отключва за избор след като се
+ * даде Състояние на Имота: Строителство."
+ *
+ * „Тези 3 функции" сочи B1–B3 поименно: Добави Дело · Добави Среща · Добави
+ * Преписка. Те НЕ са общото меню „Създаване" (Имот · Обект · Задача · Среща ·
+ * Кредит) — то ражда нещо ново където и да си. Тези три раждат ЗАДАЧА КЪМ
+ * избрания ред, и затова видът ѝ идва готов, вместо човек да го избира наново.
+ *
+ * ЧЕТВЪРТИЯТ е само на Имота и е сив, докато Състоянието му не стане Строеж.
+ * Причината се КАЗВА (правило 12) и се мени според реда: „още няма Състояние
+ * Строеж" е друго от „идва с ход 11б", и човек трябва да знае кое от двете го
+ * спира.
+ */
+export function tochkiteNaRoditelya(
+  k: KonteksNaEkrana,
+  izbran: Izbran,
+  sastoyanieToStroezh: boolean,
+): readonly Tochka[] {
+  // СЪЩИЯТ строител като на общото меню · два биха се разминали при първата
+  // промяна на полетата на задачата
+  const zadacha = (ime: string, zaglavie: string): Tochka => {
+    const nomer = vidNaZadachata(k, ime);
+    return zadachaIliSreshta(k, `rod-${ime}`, `Добави ${ime}`, zaglavie, nomer, nomer, izbran.id);
+  };
+  return [
+    zadacha('Дело', 'Ново Дело'),
+    zadacha('Среща', 'Нова Среща'),
+    zadacha('Преписка', 'Нова Преписка'),
+    // ЧЕТВЪРТИЯТ · само върху Имот (негово B4: „Само към Имот се добавя Голямо дело")
+    ...(izbran.tablitsa === 'imoti'
+      ? [
+          {
+            klyuch: 'golyamo-delo',
+            ime: 'Голямо дело',
+            razreshena: false,
+            zashto: sastoyanieToStroezh
+              ? 'идва с ход 11б · Състоянието вече е Строеж, остава таблицата'
+              : 'отключва се, когато Състоянието на Имота стане Строеж (негово B4)',
+            deystvie: () => {},
+          },
+        ]
+      : []),
+  ];
+}
+
 export function zakachiSazdavanetoOtDesniyaButon(
   k: KonteksNaEkrana,
   dopalnitelni: (() => readonly Tochka[]) | undefined = undefined,
