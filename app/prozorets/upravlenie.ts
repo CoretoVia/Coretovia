@@ -48,6 +48,8 @@ import {
   sboroveVKolonite,
   svetofarNaSroka,
 } from '../../src/smetach/gant.js';
+import type { Izbran } from '../../src/porta/porta.js';
+import { kletkaNa } from '../../src/ogledalo/tablitsa.js';
 import { dumiNaKletka, imeNaReda, tekstNaIzbora } from '../../src/smetach/kletki.js';
 import { tekstNaNomera } from '../../src/smetach/nomeratsiya.js';
 import { nomerNaSpeshnoto, poletataNaUpravlenie } from '../../src/smetach/polata.js';
@@ -85,6 +87,7 @@ import {
   zakachiTemite,
 } from '../reshetka/lenta-deystviya.js';
 import {
+  tochkiteNaRoditelya,
   tochkiteNaSazdavaneto,
   zakachiSazdavanetoOtDesniyaButon,
 } from '../reshetka/sazdavaneto.js';
@@ -866,26 +869,49 @@ export function narisuvayUpravlenie(k: KonteksNaEkrana): void {
         klas: 'zadacha nivo-2',
       });
     },
-    // СЪЗДАВАНЕТО стои ПОСЛЕДНО · действията върху избрания ред са по-честите,
-    // а раждането на нов е по-рядкото (запис 210)
+    /**
+     * ТРИ ФУНКЦИИ ВЪРХУ ОБЕКТ, ЧЕТИРИ ВЪРХУ ИМОТ · `zadanie/03` B5 (ДЛ-Т16).
+     *
+     * Дотук върху Имот и върху Обект излизаше ЕДИН И СЪЩ списък — общото меню
+     * „Създаване" плюс сивото Голямо дело. Разликата, която B5 иска дословно
+     * („тези 3 функции… а за Имота да има 4"), я нямаше.
+     *
+     * Сега върху РОДИТЕЛ идват неговите четири поименни (B1–B4): Дело · Среща ·
+     * Преписка, и Голямо дело само на Имота. Общото създаване стои ПОСЛЕДНО —
+     * действията върху избрания ред са по-честите, а раждането на нов е
+     * по-рядкото (запис 210).
+     */
     (izbran) => [
       ...(izbran.tablitsa === TABLITSA
         ? []
-        : [
-            {
-              klyuch: 'golyamo-delo',
-              ime: 'Голямо дело',
-              razreshena: false,
-              zashto: 'идва с ход 11б · само при Строеж (негово B4)',
-              deystvie: () => {},
-            },
-          ]),
+        : tochkiteNaRoditelya(k, izbran, imotatEStroezh(o, izbran))),
       ...tochkiteNaSazdavaneto(k),
     ],
   );
   // и върху ПРАЗНОТО · инак човек с празна книга няма ред, върху който да
   // натисне, и първият му имот няма откъде да се роди (запис 210)
   zakachiSazdavanetoOtDesniyaButon(k);
+}
+
+/**
+ * СЪСТОЯНИЕТО НА ИМОТА Е ЛИ „СТРОЕЖ" · за четвъртия пункт на B4.
+ *
+ * Негово, `zadanie/03` B4: Голямото дело „се отключва за избор след като се даде
+ * Състояние на Имота: Строителство". Дотогава пунктът стои сив и КАЗВА защо — а
+ * причината е различна преди и след Строежа, и човек трябва да знае коя от двете
+ * го спира (правило 12).
+ *
+ * `zadanie/03` B7: „Имотите има Състояние: ПИ · УПИ · Строеж."
+ */
+function imotatEStroezh(o: Ogledalo, izbran: Izbran): boolean {
+  if (izbran.tablitsa !== 'imoti') return false;
+  const tv = o.tablitsi.get('imoti');
+  if (tv === undefined) return false;
+  const i = tv.id.indexOf(izbran.id);
+  if (i < 0) return false;
+  return tekstNaIzbora(o, 'imoti', 'sastoyanie', kletkaNa(tv, i, 'sastoyanie'), {}).includes(
+    'Строеж',
+  );
 }
 
 function deystvieNaButona(

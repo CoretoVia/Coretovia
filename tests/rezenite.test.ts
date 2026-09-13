@@ -5,7 +5,6 @@
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { HOD_NA_PROZORETSA } from '../app/prozorets/ostanalite.js';
 import { HOD_NA_AGENTITE } from '../src/model/agenti.js';
 import { BUTONI_NA_UPRAVLENIE, PROZORTSI } from '../src/model/osnova.js';
 
@@ -27,17 +26,29 @@ describe('резените по прозорец', () => {
     expect(redove.has('6р')).toBe(true);
   });
 
-  it('всеки прозорец без екран сочи ред от плана, в който стои листът му', () => {
-    for (const [klyuch, hod] of Object.entries(HOD_NA_PROZORETSA)) {
-      const list = PROZORTSI.find((p) => p.klyuch === klyuch)?.list ?? '';
-      const zaglavie = redove.get(String(hod)) ?? '';
-      expect(zaglavie, `${klyuch} → ход ${hod}`).toContain(list);
-    }
-  });
-
-  it('ОСЕМТЕ прозореца са построени · нито един не казва „идва с ход"', () => {
-    for (const p of PROZORTSI) expect(HOD_NA_PROZORETSA).not.toHaveProperty(p.klyuch);
-    expect(Object.keys(HOD_NA_PROZORETSA)).toHaveLength(0);
+  /**
+   * ОСЕМТЕ СА ПОСТРОЕНИ · и вече го пази TypeScript, не списък.
+   *
+   * Дотук това се доказваше с празен обект `HOD_NA_PROZORETSA` и с общ клон
+   * `default`, който рисуваше „още не е построен". Клонът беше НЕДОСТИЖИМ (всеки
+   * ключ има свой `case`), но `chistota` го броеше за жив, защото викащ формално
+   * имаше. И двете паднаха на 13.09.
+   *
+   * Сега мярката е по-строга: `prozortsite.ts` няма `default`, тъй че нов ключ
+   * без свой `case` пада на `typecheck`. Тук се пази, че клонът не се е върнал.
+   */
+  it('ОСЕМТЕ прозореца имат СВОЙ рисувач · и няма общ клон, който да ги покрие', () => {
+    const t = readFileSync('app/prozorets/prozortsite.ts', 'utf8');
+    // ПИНЪТ С РЪКА · без него празен каталог би направил цикъла зелен (К1: осем са)
+    expect(PROZORTSI.length).toBe(8);
+    for (const p of PROZORTSI) expect(t, p.klyuch).toContain(`case '${p.klyuch}':`);
+    // КОДЪТ, не коментарите · първият пробег на тази проверка се спъна в
+    // собствения си разказ: думата в главата на файла се брои за клон.
+    const kod = t
+      .split('\n')
+      .filter((r) => !/^\s*(\*|\/\*|\/\/)/.test(r))
+      .join('\n');
+    expect(kod, 'общ клон крие непостроен прозорец').not.toContain('default:');
   });
 
   /**
