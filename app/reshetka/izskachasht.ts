@@ -24,6 +24,7 @@
 import type { Kletka, Kletki } from '../../src/model/kletka.js';
 import type { Kolona } from '../../src/model/kolona.js';
 import { tablitsata } from '../../src/model/model.js';
+import { redKato } from '../../src/ogledalo/tablitsa.js';
 import { MODEL } from '../../src/model/osnova.js';
 import { slotNaKolonata } from '../../src/model/kolona.js';
 import { tekstNaPomoshtta } from '../../src/model/pomosht.js';
@@ -43,6 +44,19 @@ export interface OpisNaSazdavaneto {
   readonly zaglavie: string;
   /** клетки, дадени отвън · не се показват като полета, но влизат в товара */
   readonly dadeni?: Readonly<Record<string, Kletka | null>>;
+  /**
+   * ПОПРАВКА, не създаване · `id` на реда, който се поправя.
+   *
+   * Негово, 11.09 (запис 195) т.7: „**С десен бутон на служителя можеш да му
+   * РЕДАКТИРАШ ДАННИТЕ** и да му дадеш задачи." Дотук пунктът стоеше сив и
+   * казваше „клетката се отваря с натискане върху нея" — вярно, но не е
+   * неговото: той иска ЕДНО място, където се вижда и се пипа всичко.
+   *
+   * Един и същи прозорец за двете, защото полетата са същите. Разликата е три
+   * неща: полетата тръгват ПЪЛНИ, командата е поправка вместо създаване, и
+   * бутонът казва „Запази", не „Създай".
+   */
+  readonly popravyaId?: string;
 }
 
 /** Отваря прозореца · затваря се сам след успешен запис. */
@@ -63,7 +77,9 @@ export function otvoriIzskachasht(k: KonteksNaEkrana, opis: OpisNaSazdavaneto): 
       <p class="greshka" data-izskachasht-greshka></p>
       <div class="poleta" data-izskachasht-poleta></div>
       <div class="deystviya butoni-malki">
-        <button type="button" class="malak" data-izskachasht-sazday>Създай</button>
+        <button type="button" class="malak" data-izskachasht-sazday>${
+          opis.popravyaId === undefined ? 'Създай' : 'Запази'
+        }</button>
         <button type="button" class="malak vtorichen" data-izskachasht-otkazhi>Откажи</button>
       </div>
     </form>`,
@@ -72,6 +88,19 @@ export function otvoriIzskachasht(k: KonteksNaEkrana, opis: OpisNaSazdavaneto): 
   const gnezdo = prozorets.querySelector<HTMLElement>('[data-izskachasht-poleta]')!;
   const poleta = new Map<string, HTMLInputElement | HTMLSelectElement>();
   const tekushti: Record<string, Kletka> = {};
+  /**
+   * СТАРИТЕ СТОЙНОСТИ · при поправка полетата тръгват пълни.
+   *
+   * Празен прозорец над съществуващ ред е капан: човек попълва две полета,
+   * натиска „Запази" и изтрива останалите, без да е искал.
+   */
+  const staroto: Readonly<Record<string, Kletka>> = ((): Record<string, Kletka> => {
+    if (opis.popravyaId === undefined) return {};
+    const tv = o.tablitsi.get(opis.tablitsa);
+    if (tv === undefined) return {};
+    const i = tv.id.indexOf(opis.popravyaId);
+    return i < 0 ? {} : redKato(tv, i).kletki;
+  })();
   for (const kol of t.koloni) {
     if (slotNaKolonata(kol) === undefined || kol.klyuch in dadeni) continue;
     const red = document.createElement('label');
@@ -79,7 +108,7 @@ export function otvoriIzskachasht(k: KonteksNaEkrana, opis: OpisNaSazdavaneto): 
     const ime = document.createElement('span');
     ime.className = 'ime';
     ime.textContent = kol.ime;
-    const pole = poleZaKolona(o, kol, null, tekushti);
+    const pole = poleZaKolona(o, kol, staroto[kol.klyuch] ?? null, tekushti);
     // СВОЙ клас, не общият `.pole`: правилата за решетката са дълбоки и всяко
     // правило тук би тръгнало да ги надбягва по специфичност (biome го брои).
     pole.classList.add('pole-v-prozoretsa');
@@ -108,7 +137,12 @@ export function otvoriIzskachasht(k: KonteksNaEkrana, opis: OpisNaSazdavaneto): 
       return;
     }
     vDvizhenie = true;
-    const r = await k.porta.izpalni(komandaId, opis.komanda, { kletki: kletki as Kletki });
+    // ПОПРАВКАТА носи адреса на реда · създаването не го знае, защото го ражда
+    const tovar =
+      opis.popravyaId === undefined
+        ? { kletki: kletki as Kletki }
+        : { tablitsa: opis.tablitsa, id: opis.popravyaId, kletki: kletki as Kletki };
+    const r = await k.porta.izpalni(komandaId, opis.komanda, tovar);
     vDvizhenie = false;
     if ('otkaz' in r) {
       // отказът остава В прозореца · зад него човекът вече не гледа

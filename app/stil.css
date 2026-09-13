@@ -2060,3 +2060,20 @@ select.pole:required {
 :root[data-pomosht="nachalo"] .obyasnenie .znak {
   display: none;
 }
+
+/* КОРМИЛОТО НА СЕДМИЦАТА · ДЛ-Т58 · негово, 11.09 (запис 195) т.7: „знаеш кой
+   ден какво прави и КАКВО Е ПРАВИЛ." Миналото време иска минала седмица, а
+   прозорецът беше закован на днешната. */
+.ekran .sedmitsa-kormilo {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.3rem;
+}
+
+.ekran .sedmitsa-kormilo .sedmitsa-koga {
+  flex: 1 1 auto;
+  text-align: center;
+  color: var(--sivo);
+  font-size: 0.85rem;
+}

@@ -247,7 +247,10 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
   proveri(
     'десният бутон върху служител дава седмицата и раздаването',
     (await tekstoveNa(p, '[data-menyu] button')).map((x) => x.replace(NOV_RED_S, ' ')).join(' · '),
-    'Седмичната програма · Дай задача · 1 без отговорник · Редактирай данните · с двойно натискане в клетката клетката се отваря с натискане върху нея',
+    // ДЛ-Т59 · пунктът вече РАБОТИ · негово, 11.09 (запис 195) т.7: „С десен бутон
+    // на служителя можеш да му РЕДАКТИРАШ ДАННИТЕ". Дотук стоеше сив и казваше
+    // „клетката се отваря с натискане върху нея" — вярно, но не е неговото.
+    'Седмичната програма · Дай задача · 1 без отговорник · Редактирай данните',
   );
   await p.click('[data-menyu] [data-tochka="sedmitsata"]');
   await p.waitForSelector('dialog[data-sedmitsa]');
@@ -261,6 +264,84 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
     (await tekstNa(p, '[data-sedmitsa-sverka]')).startsWith('натрупани от минали дни'),
     true,
   );
+
+  // ══ ДЛ-Т58 · НАЗАД И НАПРЕД ═══════════════════════════════════════════
+  //
+  // Негово, 11.09 (запис 195) т.7: „знаеш кой ден какво прави и **какво е
+  // ПРАВИЛ**." Миналото време иска минала седмица; дотук прозорецът беше закован
+  // на днешната и вторият половин от изречението му не работеше.
+  const parviyatDen = async (): Promise<string> =>
+    p.$eval('dialog[data-sedmitsa] tbody tr:first-child', (e) => e.getAttribute('data-den') ?? '');
+  const dnesnata = await parviyatDen();
+  proveri(
+    'отваря се на ДНЕШНАТА седмица · и бутонът „днес" е сив, защото вече си там',
+    `${await tekstNa(p, '[data-sedmitsa-koga]')} · ${await p.$eval(
+      '[data-sedmitsa-dnes]',
+      (e) => (e as HTMLButtonElement).disabled,
+    )}`,
+    'тази седмица · true',
+  );
+  await p.click('[data-sedmitsa-nazad]');
+  await p.waitForSelector('dialog[data-sedmitsa]');
+  const minalata = await parviyatDen();
+  proveri(
+    'ПРЕДИШНАТА седмица е точно седем дни назад · и вече не е „тази"',
+    `${(Date.parse(`${dnesnata}T00:00:00Z`) - Date.parse(`${minalata}T00:00:00Z`)) / 86_400_000} · ${(
+      await tekstNa(p, '[data-sedmitsa-koga]')
+    ).includes(minalata)}`,
+    '7 · true',
+  );
+  proveri(
+    'и КАЗВА, че натрупаното се брои спрямо днес · инак минало би минало за просрочено',
+    (await tekstNa(p, '[data-sedmitsa-sverka]')).includes('спрямо днес'),
+    true,
+  );
+  await p.click('[data-sedmitsa-dnes]');
+  await p.waitForSelector('dialog[data-sedmitsa]');
+  proveri('бутонът „днес" връща на днешната', await parviyatDen(), dnesnata);
   await p.click('[data-sedmitsa-zatvori]');
   await p.waitForSelector('dialog[data-sedmitsa]', { state: 'detached' });
+
+  // ══ ДЛ-Т59 · „РЕДАКТИРАЙ ДАННИТЕ" ПРОРАБОТВА ══════════════════════════
+  //
+  // Негово, 11.09 (запис 195) т.7: „С десен бутон на служителя можеш да му
+  // **РЕДАКТИРАШ ДАННИТЕ** и да му дадеш задачи." Второто работеше от 12.09;
+  // първото стоеше сиво и казваше „клетката се отваря с натискане върху нея" —
+  // вярно, но не е неговото: той иска ЕДНО място, където се вижда всичко.
+  await p.click('tr.red[data-tablitsa="sluzhiteli"]', { button: 'right' });
+  await p.waitForSelector('[data-menyu]');
+  await p.click('[data-menyu] [data-tochka="redaktsiya"]');
+  await p.waitForSelector('dialog[data-izskachasht="sluzhiteli"]');
+  proveri(
+    'прозорецът казва КОГО поправя · и бутонът е „Запази", не „Създай"',
+    `${await tekstNa(p, 'dialog[data-izskachasht] h2')} · ${await tekstNa(
+      p,
+      '[data-izskachasht-sazday]',
+    )}`,
+    'Поправи Помощникът · Запази',
+  );
+  proveri(
+    'полетата тръгват ПЪЛНИ · празен прозорец над съществуващ ред е капан',
+    await p.$eval(
+      'dialog[data-izskachasht] .pole-v-prozoretsa',
+      (e) => (e as HTMLInputElement).value,
+    ),
+    'Помощникът',
+  );
+  // и ЗАПИСЪТ минава · инак прозорецът е витрина
+  await p.fill('dialog[data-izskachasht] .pole-v-prozoretsa', 'Помощникът · поправен');
+  await p.click('[data-izskachasht-sazday]');
+  await p.waitForSelector('dialog[data-izskachasht]', { state: 'detached' });
+  await p.waitForFunction(
+    (ime) =>
+      (
+        document.querySelector('tr.red[data-tablitsa="sluzhiteli"]') as HTMLElement | null
+      )?.innerText.includes(ime) === true,
+    'Помощникът · поправен',
+  );
+  proveri(
+    'записът МИНАВА · името се смени в таблицата',
+    (await tekstNa(p, 'tr.red[data-tablitsa="sluzhiteli"]')).includes('Помощникът · поправен'),
+    true,
+  );
 }
