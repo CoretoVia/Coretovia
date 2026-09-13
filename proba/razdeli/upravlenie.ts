@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { napishiKniga, prochetiKniga } from '../../src/kniga/ooxml.ts';
 import { opisOtProcheten } from '../yadro/kniga.ts';
 import type { KonteksNaProhoda } from '../yadro/kontekst.ts';
-import { litseNaButona, natisniButon, tekstNa, tekstoveNa } from '../yadro/pomoshtni.ts';
+import { natisniButon, tekstNa, tekstoveNa } from '../yadro/pomoshtni.ts';
 import { denOtMesetsa } from '../yadro/kalendar.ts';
 import { ADRES } from '../yadro/server.ts';
 
@@ -12,7 +12,7 @@ import { ADRES } from '../yadro/server.ts';
 const S_ZADACHA = join(tmpdir(), 'coretovia-proba-zadacha.xlsx');
 const UPRAVLENIE = 'УправлениеДелаПреписки';
 /** грешката на Управление · след залепената част, за да не е гол белег (честност Б) */
-const GRESHKA = '[data-zalepeno="upravlenie"] + [data-greshka]';
+const _GRESHKA = '[data-zalepeno="upravlenie"] + [data-greshka]';
 /** еврото по нормата му · тясна пауза (U+202F) между хилядите и пред знака */
 const EVRO_250000 = '250\u202F000,00\u202F€';
 
@@ -48,10 +48,26 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
     (await tekstoveNa(p, '[data-tsifra]')).slice(5).join(' · '),
     '3 · 0 · 0',
   );
+  // ОСЕМ, НЕ ЧЕТИРИНАЙСЕТ · негово, 13.09 (запис 210): „Махни всичките бутони за
+  // добавяне и скриване." Шест слязоха от ЕКРАНА; в каталога и в Книгата му са
+  // и четиринайсетте (`SVALENI_OT_EKRANA` в `osnova.ts`).
   proveri(
-    'четиринайсет бутона · всички с един клас',
+    'осем бутона на екрана · шестте за добавяне и скриване слязоха',
     await p.$$eval('[data-zalepeno="upravlenie"] [data-buton-ekran].malak', (es) => es.length),
-    14,
+    8,
+  );
+  proveri(
+    'нито един бутон за добавяне или скриване не е останал горе',
+    await p.$$eval(
+      '[data-zalepeno="upravlenie"] [data-buton-ekran]',
+      (es) =>
+        es
+          .map((e) => e.getAttribute('data-buton-ekran') ?? '')
+          .filter(
+            (x) => x.startsWith('dobavyane') || (x.startsWith('skriy-') && x !== 'skriy-dela'),
+          ).length,
+    ),
+    0,
   );
   proveri(
     'Отвори и Запази вече РАБОТЯТ · не казват „идва с резен" (резен 6б)',
@@ -98,11 +114,13 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
   await p.click(garaYana, { button: 'right' });
   await p.waitForSelector('[data-menyu]');
   proveri(
-    'менюто · Добави Задача · Изключи · Върни · СВЪРШЕНА · Върни в работа · Сторно · Голямо дело',
+    // СЪЗДАВАНЕТО СЛЕЗЕ ТУК · негово, 13.09 (запис 210), и `zadanie/03` B5:
+    // „Да може тук да се ползва десния бутон и да се дава опция … за добавяне."
+    'менюто · действията върху реда, после СЪЗДАВАНЕТО',
     (await tekstoveNa(p, '[data-tochka]')).map((t) => t.split('\n')[0]).join(' · '),
     // негово, 13.09 (запис 206): „Задачата се потвърждава през приложението от
     // десния бутон." Оттам са двата нови пункта.
-    'Добави Задача · Изключи реда · Върни реда · Свършена · Върни в работа · Сторно на последната промяна · Голямо дело',
+    'Добави Задача · Изключи реда · Върни реда · Свършена · Върни в работа · Сторно на последната промяна · Голямо дело · Имот · Обект · Задача · Среща · Кредит',
   );
   proveri(
     'Голямото дело казва кога идва · видимо в самия пункт',
@@ -264,23 +282,20 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
     ),
     '72',
   );
-  await natisniButon(p, 'skriy-diagrama');
-  await p.waitForSelector('[data-reshetka="zadachi"].bez-taktove');
+  // ТАБЛИЦАТА И КАЛЕНДАРЪТ СА ЕДНО · негово, 11.09 (запис 194): „да се сливат
+  // редовете на таблицата и на календара… Направи ги едно." Затова двата бутона,
+  // които криеха всяка половина поотделно, слязоха с останалите (запис 210) —
+  // едно нещо няма две половини за криене.
   proveri(
-    'Скрий Диаграма · бутонът вече казва „Покажи Диаграма"',
-    await litseNaButona(p, 'skriy-diagrama'),
-    'Покажи Диаграма',
+    'таблицата и календарът вече не се крият поотделно',
+    await p.$$eval('[data-buton-ekran^="skriy-"]', (es) => es.length),
+    1,
   );
-  await natisniButon(p, 'skriy-tablitsa');
-  await p.waitForFunction((s) => (document.querySelector(s)?.textContent ?? '') !== '', GRESHKA);
   proveri(
-    'последният изглед не се скрива · и отказът се казва',
-    await tekstNa(p, GRESHKA),
-    'Последният изглед не се скрива — иначе секцията остава празна.',
+    'и останалият е ЕДИНСТВЕНИЯТ превключвател',
+    await p.$eval('[data-buton-ekran^="skriy-"]', (e) => e.getAttribute('data-buton-ekran')),
+    'skriy-dela',
   );
-  await natisniButon(p, 'skriy-diagrama');
-  await p.waitForSelector('[data-reshetka="zadachi"]:not(.bez-taktove)');
-  proveri('Покажи Диаграма я връща', await litseNaButona(p, 'skriy-diagrama'), 'Скрий Диаграма');
 
   // ══ 3г · „Свалифайл" = Книгата · листът Управление ═══════════════════
   // ══ 3в2 · неговите Отвори и Запази · моделът е ИМЕНУВАН поглед ══════
@@ -430,7 +445,10 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
   );
   // ══ 3е · ИЗСКАЧАЩИЯТ ПРОЗОРЕЦ ЗА СЪЗДАВАНЕ · негово, запис 195 т.11 ════
   razdel = '3е · изскачащият прозорец';
-  await natisniButon(p, 'dobavyane');
+  // ОТ ДЕСНИЯ БУТОН ВЪРХУ ПРАЗНО · бутонът „Добавяне" слезе от лентата (запис
+  // 210), а `zadanie/03` B5 иска създаването точно тук. Празното място е
+  // важната половина: с празна книга няма ред, върху който да се натисне.
+  await p.click('[data-sverka="darvo"]', { button: 'right' });
   await p.waitForSelector('[data-menyu]');
   proveri(
     'менюто дава петте му неща · Кредитът е сив',

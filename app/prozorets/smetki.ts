@@ -72,7 +72,12 @@ import { otvoriChernova } from '../reshetka/chernova.js';
 import { podskazka, podskazkaSDumi } from '../reshetka/podskazka.js';
 import { h, sloji, type Zapechatan } from '../reshetka/shablon.js';
 import { chetiEkranno, zapomniEkranno } from '../reshetka/pamet-ekran.js';
-import { dumataNaRezhima, obarniRezhima, parite } from '../reshetka/rezhim.js';
+import {
+  dumataNaRezhima,
+  obarniRezhima,
+  parite,
+  sastoyanietoNaRezhima,
+} from '../reshetka/rezhim.js';
 import {
   glaviteNaTakta,
   lentaNaDeystviyata,
@@ -82,7 +87,11 @@ import {
   zakachiTemite,
 } from '../reshetka/lenta-deystviya.js';
 import { podtaboveHTML, tekushtPodtab, zakachiPodtabove } from '../reshetka/podtabove.js';
-import { sazdavaneOtButona } from '../reshetka/sazdavaneto.js';
+import {
+  tochkiteNaSazdavaneto,
+  zakachiSazdavanetoOtDesniyaButon,
+} from '../reshetka/sazdavaneto.js';
+import type { Tochka } from '../reshetka/menyu.js';
 import { pokazhiGreshka } from '../reshetka/redaktsiya.js';
 import { kletkaHTML, zakachiReshetkata } from '../reshetka/reshetka.js';
 import {
@@ -100,8 +109,6 @@ const PAMET = Object.freeze({
   podtab: 'smetki.podtab',
   /** редът „филтър" под главите · падащи менюта (запис 199 т.5) */
   filtar: 'smetki.filtar',
-  /** кои страни са скрити · ПОГЛЕД, не данни: нула събития, нула Журнал */
-  skriti: 'smetki.skriti',
   /** тактът и периодът · негово, запис 195 т.4 — тактът да го има и тук */
   takt: 'smetki.takt',
   period: 'smetki.period',
@@ -110,11 +117,6 @@ const PAMET = Object.freeze({
   sektsiyataNaRazhoda: 'smetki.sektsiyataNaRazhoda',
   /** пусната ли е Проверката · тя е ДЕЙСТВИЕ с бутон (негово, запис 144) */
   proverkata: 'smetki.proverkata',
-});
-/** Кой бутон коя страна крие · неговите две клетки от лист Сметки (ред 12–13). */
-const STRANATA_NA_BUTONA: Readonly<Record<string, Strana | undefined>> = Object.freeze({
-  'skriy-prihodi': 'prihod',
-  'skriy-razhodi': 'razhod',
 });
 
 /** прозорецът · името му живее САМО в `osnova.ts` (К1 · `tests/osemte.test.ts` обхожда и `app/`) */
@@ -292,10 +294,12 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
   const podtab = tekushtPodtab(PAMET.podtab, PODTABOVE);
   const filtar = chetiEkranno<(string | null)[]>(PAMET.filtar, []).map((x) => x ?? '');
   /**
-   * СКРИТИТЕ СТРАНИ · поглед, не данни (правило 23: скритото ПАК се смята).
-   * Скриването пипа екрана и нищо друго — нито сбор, нито Журнал, нито износ.
+   * ПРИХОДЪТ И РАЗХОДЪТ ВЕЧЕ НЕ СЕ КРИЯТ ПООТДЕЛНО · негово, 13.09 (запис 210):
+   * „Махни всичките бутони за добавяне и скриване." Двата бутона „Скрий
+   * Приходи/Разходи" слязоха от екрана, а с тях и паметта им — филтърът в
+   * главата на колоната прави същото и повече (запис 192: „Филтър значи да ги
+   * СОРТИРАШ"), без да отнема половината екран.
    */
-  const skritite = chetiEkranno<readonly Strana[]>(PAMET.skriti, []);
   /**
    * РЕЖИМЪТ е общ с Управление · негово, 12.09 (запис 202): „**Двата бутона
    * сменят и двата режима в Управление и в Сметки.**" В „задачи" секцията на
@@ -799,15 +803,9 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
   const butonHTML = (b: ButonNaProzoretsa): Zapechatan => {
     const obshto = obshtotoNaButona(b, takt, period);
     if (obshto !== null) return obshto;
-    // СКРИЙ ↔ ПОКАЖИ · бутонът казва какво ще СТАНЕ, не какво е било. Неговата
+    // ВКАРАЙ ↔ ИЗВАДИ · бутонът казва какво ще СТАНЕ, не какво е било. Неговата
     // дума остава в `ime`; на лицето стои действието, при задържане — помощта.
-    const strana = STRANATA_NA_BUTONA[b.klyuch];
-    const duma =
-      b.klyuch === 'skriy-dela'
-        ? dumataNaRezhima('Задачи')
-        : strana !== undefined && skritite.includes(strana)
-          ? `Покажи ${IMENA_NA_STRANITE[strana]}`
-          : litse(b);
+    const duma = b.klyuch === 'skriy-dela' ? dumataNaRezhima('Задачи') : litse(b);
     return h`<button type="button" class="malak" data-buton-ekran="${b.klyuch}"${podskazka(b.pomosht)}>${duma}</button>`;
   };
 
@@ -1068,11 +1066,7 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
             ' · ',
           )}</span><span class="ime">${kesh.sverki.map((sv) => sv.kakvo).join(' · ')}</span></span>
       </form>
-      ${lentaNaDeystviyata(
-        BUTONI_NA_UPRAVLENIE,
-        butonHTML,
-        h`<button type="button" class="malak" data-dobavi-dvizhenie${podskazkaSDumi('отваря чернова под главата · Enter записва реда през Портата · знакът решава страната')}>Добави ред с пари</button>`,
-      )}
+      ${lentaNaDeystviyata(BUTONI_NA_UPRAVLENIE, butonHTML)}
     </div>
     <p class="greshka" data-greshka></p>
     ${
@@ -1102,8 +1096,8 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
     </section>
     <section class="smetki-tyalo" data-smetki>
       <div class="smetki-blokove">
-        ${skritite.includes('prihod') ? '' : stranaHTML('prihod', fPrihod.sektsii, sborPrihod, fPrihod.broyVidimi, fPrihod.broyVsichki)}
-        ${skritite.includes('razhod') ? '' : stranaHTML('razhod', fRazhod.sektsii, sborRazhod, fRazhod.broyVidimi, fRazhod.broyVsichki)}
+        ${stranaHTML('prihod', fPrihod.sektsii, sborPrihod, fPrihod.broyVidimi, fPrihod.broyVsichki)}
+        ${stranaHTML('razhod', fRazhod.sektsii, sborRazhod, fRazhod.broyVidimi, fRazhod.broyVsichki)}
         ${bezDataHTML()}
         ${razlikiteHTML()}
         <section class="tablitsa-blok" data-blok="vkarvane">
@@ -1122,7 +1116,7 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
             <tfoot><tr class="sbor"><td colspan="${KOLONI.length - 1}"${izvedena('vkarvane')}>ОБЩ Вкарване</td><td class="evro" data-sbor="vkarvane" translate="no">${pishi(v.sbor)}</td></tr></tfoot>
           </table>
         </section>
-        <p class="pod-tablitsata" data-sverka="smetki"${podskazka(POMOSHT_NA_SVERKATA)}>движения ${s.broyDvizheniya} · без секция ${s.bezSektsiya.length} · сверката ${s.sverka.nared ? 'затваря' : `не затваря (${s.sverka.razlika})`}${samoMeseca ? ` · само ${mesets}` : ''}</p>
+        <p class="pod-tablitsata" data-sverka="smetki"${podskazka(POMOSHT_NA_SVERKATA)}>движения ${s.broyDvizheniya} · без секция ${s.bezSektsiya.length} · сверката ${s.sverka.nared ? 'затваря' : `не затваря (${s.sverka.razlika})`}${samoMeseca ? ` · само ${mesets}` : ''} · ${sastoyanietoNaRezhima('Задачите с бюджет')}</p>
       </div>
       <p class="pod-tablitsata" data-sverka="gant">${p.lenti[2] ?? ''} · тактовете са КОЛОНИ на същите редове · такт ${IMENA_NA_TAKTOVETE[
         takt
@@ -1190,17 +1184,33 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
   for (const b of k.tyalo.querySelectorAll<HTMLButtonElement>('button[data-buton-ekran]')) {
     const opis = BUTONI_NA_UPRAVLENIE.find((x) => x.klyuch === b.dataset['butonEkran']);
     if (opis === undefined) continue;
-    b.addEventListener('click', () => deystvieNaButona(k, opis, b));
+    b.addEventListener('click', () => deystvieNaButona(k, opis));
   }
-  k.tyalo
-    .querySelector<HTMLButtonElement>('[data-dobavi-dvizhenie]')
-    ?.addEventListener('click', () => {
-      // черновата се пише в СВОЯТА таблица · с ВСИЧКИТЕ си колони (вкл. двете
-      // секции); записаният ред застава в секцията си при следващото рисуване
-      otvoriChernova(k.tyalo, k, TABLITSA, 'smetki.dobaviDvizhenie');
-    });
+  /**
+   * НОВИЯТ РЕД С ПАРИ · вече от десния бутон, не от лентата.
+   *
+   * Негово, 13.09 (запис 210): „Махни всичките бутони за добавяне и скриване."
+   * Черновата се пише в СВОЯТА таблица, с ВСИЧКИТЕ си колони (включително двете
+   * секции); записаният ред застава в секцията си при следващото рисуване.
+   */
+  const noviyatRed = (): readonly Tochka[] => [
+    {
+      klyuch: 'dobavi-dvizhenie',
+      ime: 'Ред с пари',
+      razreshena: true,
+      zashto: '',
+      deystvie: () => otvoriChernova(k.tyalo, k, TABLITSA, 'smetki.dobaviDvizhenie'),
+    },
+  ];
 
-  zakachiDyasnoMenyu(k, 'smetki', (b) => void izpalniOtMenyuto(k, b.klyuch, b.tovar));
+  zakachiDyasnoMenyu(
+    k,
+    'smetki',
+    (b) => void izpalniOtMenyuto(k, b.klyuch, b.tovar),
+    // СЪЗДАВАНЕТО стои ПОСЛЕДНО · вж. Управление (запис 210)
+    () => [...noviyatRed(), ...tochkiteNaSazdavaneto(k)],
+  );
+  zakachiSazdavanetoOtDesniyaButon(k, noviyatRed);
 }
 
 /** Гантът на Сметки · всяко движение е една колона — месецът му. */
@@ -1246,35 +1256,7 @@ function zapishiDdsa(k: KonteksNaEkrana): Promise<void> {
   }));
 }
 
-/**
- * СКРИЙ ↔ ПОКАЖИ една страна · и ПОСЛЕДНАТА видима не се скрива.
- *
- * Отказът се КАЗВА (правило 12), вместо екранът да остане празен и човекът да
- * гадае кой бутон го е изпразнил. Същото решение като при реда на менюто в
- * MasterBook (ADR-066): последният видим изглед не се скрива.
- */
-function prevklyuchiStranata(k: KonteksNaEkrana, strana: Strana): void {
-  const sega = chetiEkranno<readonly Strana[]>(PAMET.skriti, []);
-  if (sega.includes(strana)) {
-    zapomniEkranno(
-      PAMET.skriti,
-      sega.filter((x) => x !== strana),
-    );
-    k.prerisuvay();
-    return;
-  }
-  if (sega.length >= 1) {
-    pokazhiGreshka(
-      k.tyalo,
-      `Последната видима страна не се скрива · „${IMENA_NA_STRANITE[strana]}" остава, докато не покажеш другата.`,
-    );
-    return;
-  }
-  zapomniEkranno(PAMET.skriti, [...sega, strana]);
-  k.prerisuvay();
-}
-
-function deystvieNaButona(k: KonteksNaEkrana, b: ButonNaProzoretsa, el: HTMLElement): void {
+function deystvieNaButona(k: KonteksNaEkrana, b: ButonNaProzoretsa): void {
   const d = b.deystvie;
   switch (d.vid) {
     case 'kniga':
@@ -1313,15 +1295,7 @@ function deystvieNaButona(k: KonteksNaEkrana, b: ButonNaProzoretsa, el: HTMLElem
       obarniRezhima();
       k.prerisuvay();
       return;
-    case 'dobavyane': {
-      // създаването е в ИЗСКАЧАЩ прозорец и е едно и също навсякъде (записи 193 · 195)
-      sazdavaneOtButona(k, el);
-      return;
-    }
-    case 'skriy-prihodi':
-    case 'skriy-razhodi':
-      prevklyuchiStranata(k, STRANATA_NA_BUTONA[d.klyuch]!);
-      return;
+
     default:
       pokazhiGreshka(
         k.tyalo,

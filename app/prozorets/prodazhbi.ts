@@ -37,7 +37,7 @@ import { KOLONI_NA_OTSENKATA, otsenkata } from '../../src/smetach/kalkulator/sto
 import { pishi } from '../../src/yadro/pari.js';
 import type { KonteksNaEkrana } from '../kontekst.js';
 import { zakachiButonite } from '../reshetka/chernova.js';
-import { sazdavaneOtButona } from '../reshetka/sazdavaneto.js';
+import { zakachiSazdavanetoOtDesniyaButon } from '../reshetka/sazdavaneto.js';
 import { podskazka, podskazkaSDumi } from '../reshetka/podskazka.js';
 import { h, sloji, type Zapechatan } from '../reshetka/shablon.js';
 import { kletkaHTML, zakachiReshetkata } from '../reshetka/reshetka.js';
@@ -224,7 +224,7 @@ export function narisuvayProdazhbi(k: KonteksNaEkrana): void {
           няма), човек трябваше да излезе, да го създаде другаде и да почне реда
           отначало.
         -->
-        <button type="button" class="malak" data-sazdavane>Създаване</button>
+
         <button type="button" class="vtorichen" data-zapazi-kniga>Запази книгата</button>
       </div>
     </div>
@@ -240,7 +240,8 @@ export function narisuvayProdazhbi(k: KonteksNaEkrana): void {
   zakachiReshetkata(k);
 
   zakachiButonite(k, 'prodazhbi', TABLITSA_NA_BUTONA);
-  k.tyalo
-    .querySelector<HTMLButtonElement>('[data-sazdavane]')
-    ?.addEventListener('click', (e) => sazdavaneOtButona(k, e.currentTarget as HTMLElement));
+  // СЪЗДАВАНЕТО е на десния бутон · негово, 13.09 (запис 210): „Махни всичките
+  // бутони за добавяне и скриване." Продажби няма меню на реда, затова тук
+  // десният бутон отваря само създаването — навсякъде в прозореца.
+  zakachiSazdavanetoOtDesniyaButon(k);
 }

@@ -1420,22 +1420,62 @@ export interface TemaNaButonite {
 }
 
 export const TEMI_NA_BUTONITE: readonly TemaNaButonite[] = Object.freeze([
-  { klyuch: 'sazdavane', ime: 'Създаване', klyuchove: ['dobavyane', 'dobavyane-na-sastoyanie'] },
-  {
-    klyuch: 'izgled',
-    ime: 'Изглед',
-    klyuchove: ['skriy-tablitsa', 'skriy-diagrama', 'skriy-dela', 'skriy-prihodi', 'skriy-razhodi'],
-  },
   { klyuch: 'model', ime: 'Модел', klyuchove: ['otvori', 'zapazi', 'obnovi'] },
   { klyuch: 'fayl', ime: 'Файл', klyuchove: ['svali-fayl'] },
 ]);
 
-/** Ключовете, които стоят ОТКРИТИ на реда · такта и датата (запис 193). */
-export const OTKRITITE: readonly string[] = Object.freeze(['takt', 'period', 'nachalo-sega']);
+/**
+ * СВАЛЕНИТЕ ОТ ЕКРАНА · остават в Модела, защото са НЕГОВИ адреси от Книгата.
+ *
+ * Негово, 13.09 (запис 210), ДОСЛОВНО: „**Махни всичките бутони за добавяне и
+ * скриване за Управление и един за СМетки.**" И в същото изречение — какво
+ * остава: „**с по един бутон се пуска и изклюва добавянето**."
+ *
+ * ЗАЩО НЕ СЕ ТРИЯТ ОТ ТУК. Тези четиринайсет бутона идват дословно от листа
+ * Управление на неговата Книга и се ИЗПИСВАТ ОБРАТНО в нея при износ
+ * (`src/kniga/pisane.ts`). Изтрити оттук, те биха изчезнали и от Книгата му —
+ * а К1 казва, че Книгата е Заданието и ние не я пишем. Затова се сменя какво
+ * РИСУВА екранът, не какво ЗНАЕ Моделът.
+ *
+ * И къде отиде всеки:
+ *
+ *   · `dobavyane` · `dobavyane-na-sastoyanie` → в ДЕСНИЯ БУТОН. Това не е наша
+ *     измислица: `zadanie/03` B5 го иска дословно — „Да може тук да се ползва
+ *     десния бутон и да се дава опция за Всеки Имот или Обект да се избира и
+ *     добавят тези 3 функции за добавяне."
+ *   · `skriy-tablitsa` · `skriy-diagrama` → нищо не заместват, защото няма какво
+ *     да се крие поотделно: негово от 11.09 (запис 194) е „да се сливат
+ *     редовете на таблицата и на календара… **Направи ги едно**". Едно нещо
+ *     няма две половини за криене.
+ *   · `skriy-prihodi` · `skriy-razhodi` → филтърът в главата прави същото и
+ *     повече (запис 192: „Филтър значи да ги СОРТИРАШ").
+ *   · `skriy-dela` ОСТАВА — той е единственият превключвател, и минава от меню
+ *     в откритите, защото се върти непрекъснато.
+ */
+export const SVALENI_OT_EKRANA: readonly string[] = Object.freeze([
+  'dobavyane',
+  'dobavyane-na-sastoyanie',
+  'skriy-tablitsa',
+  'skriy-diagrama',
+  'skriy-prihodi',
+  'skriy-razhodi',
+]);
 
-/** Бутон без тема и без открито място · празен списък значи, че редът е цял. */
+/**
+ * Ключовете, които стоят ОТКРИТИ на реда · такта и датата (запис 193), и от
+ * 13.09 (запис 210) ЕДИНСТВЕНИЯТ превключвател — той е пръв, защото е
+ * единственото, което мени КОИ редове се виждат.
+ */
+export const OTKRITITE: readonly string[] = Object.freeze([
+  'skriy-dela',
+  'takt',
+  'period',
+  'nachalo-sega',
+]);
+
+/** Бутон без тема, без открито място и несвален · празен списък значи, че редът е цял. */
 export function butoniBezTema(butoni: readonly ButonNaProzoretsa[]): readonly string[] {
-  const vTema = new Set(TEMI_NA_BUTONITE.flatMap((t) => t.klyuchove));
+  const vTema = new Set([...TEMI_NA_BUTONITE.flatMap((t) => t.klyuchove), ...SVALENI_OT_EKRANA]);
   return butoni
     .map((b) => b.klyuch)
     .filter((klyuch) => !vTema.has(klyuch) && !OTKRITITE.includes(klyuch));

@@ -10,10 +10,7 @@ import { describe, expect, it } from 'vitest';
 import {
   broyPokrivashti,
   dniDoSroka,
-  dumataNaButona,
-  type KoeSeVizhda,
   lentaNa,
-  prevkluchi,
   reshetka,
   sboroveVKolonite,
   svetofarNaSroka,
@@ -172,29 +169,5 @@ describe('светофарът · неговите 7 и 2 дни', () => {
     expect(svetofarNaSroka('2026-08-22', DNES)).toBe('prosrocheno');
     expect(dniDoSroka('2026-08-22', DNES)).toBe(-1);
     expect(() => svetofarNaSroka('няма', DNES)).toThrow(/Нечетима дата/);
-  });
-});
-
-describe('кое се вижда · скриването е избор, не решение на кода', () => {
-  const DVETE: KoeSeVizhda = { tablitsa: true, diagrama: true };
-
-  it('от двете видими се скрива всяко · и скритото се връща', () => {
-    expect(prevkluchi(DVETE, 'tablitsa').sled).toEqual({ tablitsa: false, diagrama: true });
-    expect(prevkluchi(prevkluchi(DVETE, 'tablitsa').sled, 'tablitsa').sled).toEqual(DVETE);
-  });
-
-  it('последният видим не се скрива · и отказът се КАЗВА · показването никога не се отказва', () => {
-    const samo: KoeSeVizhda = { tablitsa: true, diagrama: false };
-    const r = prevkluchi(samo, 'tablitsa');
-    expect(r.sled).toEqual(samo);
-    expect(r.otkaz).toBe('Последният изглед не се скрива — иначе секцията остава празна.');
-    expect(prevkluchi({ tablitsa: false, diagrama: true }, 'diagrama').otkaz).not.toBe('');
-    expect(prevkluchi({ tablitsa: false, diagrama: false }, 'tablitsa').otkaz).toBe('');
-  });
-
-  it('думите на бутона казват какво ЩЕ стане · с неговите думи от Книгата', () => {
-    expect(dumataNaButona(DVETE, 'tablitsa')).toBe('Скрий Таблица');
-    expect(dumataNaButona({ tablitsa: false, diagrama: true }, 'tablitsa')).toBe('Покажи Таблица');
-    expect(dumataNaButona(DVETE, 'diagrama')).toBe('Скрий Диаграма');
   });
 });
