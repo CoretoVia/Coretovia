@@ -33,6 +33,7 @@ import {
   varniVsichkiKoloni,
   zakachiDesniyaButonNaGlavata,
   zakachiVlacheneto,
+  zalepiGlavata,
   zalepiLyavata,
 } from './kolonite.js';
 import {
@@ -128,6 +129,7 @@ export function zakachiReshetkata(k: KonteksNaEkrana): void {
   prilozhiKolonite(k.tyalo);
   sloziShiriniteNaDarvoto(k.tyalo);
   zalepiLyavata(k.tyalo);
+  zalepiGlavata(k.tyalo);
   k.tyalo.addEventListener('click', (e) => {
     const buton = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-varni-koloni]');
     if (buton === null || buton === undefined) return;

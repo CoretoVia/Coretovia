@@ -41,17 +41,45 @@ function dyal(chislitel: number, znamenatel: number): string {
 }
 
 /**
+ * Добавките към сборовете · онова, което НЕ е ред с пари, но е пари.
+ *
+ * Негово, 13.09 (запис 213), точка 2, ДОСЛОВНО: „**Тези сборни за Задачи и
+ * сметки Бюджето участват в сметките на Коефициентите под таблица и календар в
+ * СМетки.**"
+ *
+ * ЗАЩО ОТДЕЛЕН ПАРАМЕТЪР. `Smetki` знае само редовете с пари; бюджетите на
+ * задачите идват от Управление, а ДДС се СМЯТА от таблицата. И двете вече
+ * влизат в ОБЩ РАЗХОД на екрана — ако не влезеха и тук, показателите под
+ * таблицата биха казвали ДРУГО число от сбора точно над тях, и никой не би
+ * разбрал кое от двете лъже.
+ */
+export interface DobavkiKamSborovete {
+  /** цели центове, СЪС знака · добавя се към прихода */
+  readonly prihod_st: number;
+  /** цели центове, СЪС знака (разходът е отрицателен) */
+  readonly razhod_st: number;
+}
+
+const BEZ_DOBAVKI: DobavkiKamSborovete = Object.freeze({ prihod_st: 0, razhod_st: 0 });
+
+/**
  * Данните от Приходи и Разходи · всичко, което може да се събере днес.
  *
  * `mesetsi` е броят РАЗЛИЧНИ месеци, които календарът покрива — не броят на
  * колоните му. При такт „ден" колоните са часове, при седмица и месец са дни;
  * делението на тях даваше „среден приход на месец", който е приход на час.
+ *
+ * `dobavki` са бюджетите на задачите и ДДС — виж `DobavkiKamSborovete`.
  */
-export function pokazatelite(s: Smetki, mesetsi: number): readonly Pokazatel[] {
-  const prihod = s.sborPrihod;
+export function pokazatelite(
+  s: Smetki,
+  mesetsi: number,
+  dobavki: DobavkiKamSborovete = BEZ_DOBAVKI,
+): readonly Pokazatel[] {
+  const prihod = s.sborPrihod + dobavki.prihod_st;
   // разходът се пази с отрицателен знак · за четене и за дялове се взима модулът
-  const razhod = Math.abs(s.sborRazhod);
-  const rezultat = s.rezultat;
+  const razhod = Math.abs(s.sborRazhod + dobavki.razhod_st);
+  const rezultat = prihod - razhod;
 
   const nayGolyama = (spisak: Smetki['prihod']): { ime: string; sbor: number } => {
     let naygolyamata = { ime: '—', sbor: 0 };
@@ -68,14 +96,15 @@ export function pokazatelite(s: Smetki, mesetsi: number): readonly Pokazatel[] {
       klyuch: 'prihod',
       ime: 'Приход общо',
       stoynost: pishi(prihod),
-      formula: 'сборът на всички секции на Приход за показания период',
+      formula: 'сборът на всички секции на Приход за показания период, с ДДС за възстановяване',
       st: prihod,
     },
     {
       klyuch: 'razhod',
       ime: 'Разход общо',
       stoynost: pishi(razhod),
-      formula: 'сборът на всички секции на Разход, взет по модул',
+      formula:
+        'сборът на всички секции на Разход, плюс ДДС за внасяне и бюджетите на задачите · по модул',
       st: razhod,
     },
     {

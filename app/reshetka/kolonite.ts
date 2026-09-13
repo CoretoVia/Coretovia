@@ -180,6 +180,48 @@ export function zakachiDesniyaButonNaGlavata(koren: HTMLElement): void {
  */
 const ZALEPENI_KOLONI = 2;
 
+/**
+ * ЗАЛЕПЕНАТА ГЛАВА · имената на колоните остават, докато редовете текат нагоре.
+ *
+ * Негово, 08.09 (запис 64), ДОСЛОВНО: „и за таблицата, и за диаграмата
+ * хоризонталния скрол. **Важно е това, скролът**"; и „**отгоре е филтърът**" —
+ * тоест горните редове трябва да СТОЯТ, докато таблицата се движи под тях.
+ *
+ * ЗАЩО НЕ СТИГА ЕДИН РЕД CSS (ДЛ-Т56). Блокът на таблицата носи
+ * `overflow-x: auto` заради хоризонталния скрол, а CSS не позволява едната ос
+ * да е `auto`, а другата `visible` — щом едната не е `visible`, другата става
+ * `auto`. Значи блокът е скролер и по ДВЕТЕ оси, и `position: sticky` вътре в
+ * него се лепи за НЕГО, не за екрана. Дотук това не беше нито оправено, нито
+ * използвано: главата стоеше `position: static` и просто избягваше нагоре.
+ *
+ * ИЗХОДЪТ е блокът да бъде ЕДИНСТВЕНИЯТ скролер на таблицата — с таван на
+ * височината — и главата да се лепи за него. Тогава и двете оси работят в един
+ * контейнер, както е в Ексел, откъдето той взе образеца („Искам изгледа на
+ * ексел", запис 193 т.7).
+ *
+ * ВИСОЧИНИТЕ СЕ МЕРЯТ, не се пишат в CSS: редовете на главата са три (имена ·
+ * подглави · филтър), всеки с различна и променлива височина, а сгрешеното
+ * отместване лепи втория ред ВЪРХУ първия и се вижда чак когато някой скролне.
+ * Същият избор, както при лявата колона отдолу.
+ */
+export function zalepiGlavata(koren: HTMLElement): void {
+  for (const tabl of koren.querySelectorAll<HTMLTableElement>('table.reshetka.darvo')) {
+    const redove = [...tabl.querySelectorAll<HTMLTableRowElement>('thead tr')];
+    let otmestvane = 0;
+    for (const red of redove) {
+      for (const kletka of red.cells) {
+        kletka.classList.add('zalepena-glava');
+        kletka.style.top = `${String(Math.round(otmestvane))}px`;
+      }
+      // ПОСЛЕДНИЯТ ред на главата носи чертата · под нея почват данните
+      for (const kletka of red.cells) kletka.classList.remove('posledna-zalepena-glava');
+      otmestvane += red.getBoundingClientRect().height;
+    }
+    const posleden = redove[redove.length - 1];
+    if (posleden !== undefined)
+      for (const kletka of posleden.cells) kletka.classList.add('posledna-zalepena-glava');
+  }
+}
 export function zalepiLyavata(koren: HTMLElement): void {
   for (const tabl of koren.querySelectorAll<HTMLTableElement>('table.reshetka.darvo')) {
     const glavi = [...tabl.querySelectorAll<HTMLElement>('thead tr:first-child th')];
@@ -326,6 +368,7 @@ export function zakachiVlacheneto(koren: HTMLElement): void {
       if (darvo) {
         sloziShiriniteNaDarvoto(koren);
         zalepiLyavata(koren);
+        zalepiGlavata(koren);
       } else sloziShirinite(tabl);
     };
     const pusni = (): void => {
