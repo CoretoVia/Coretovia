@@ -204,6 +204,46 @@ const ZALEPENI_KOLONI = 2;
  * отместване лепи втория ред ВЪРХУ първия и се вижда чак когато някой скролне.
  * Същият избор, както при лявата колона отдолу.
  */
+/**
+ * ОТЛЕПЯНЕТО ЗА ПЕЧАТ · на хартия няма спрямо какво да се лепи.
+ *
+ * `position: sticky` при печат оставя елемента там, където е бил на екрана —
+ * тоест главата и лявата колона се НАДПЕЧАТВАТ върху данните. CSS-ът ги връща
+ * на `static`, но `top` и `left` са inline (пишат ги `zalepiGlavata` и
+ * `zalepiLyavata`), а inline стил бие всяко правило в лист.
+ *
+ * Затова числата се МАХАТ преди печат и се връщат след него. Другият изход —
+ * `!important` в стила — е по-кратък и по-лош: той учи следващия, че правилата
+ * тук се надбягват, а не се подреждат.
+ *
+ * Закача се ВЕДНЪЖ на прозореца, не на всяко рисуване: слушател, добавен по
+ * веднъж на екран, се трупа мълчаливо и накрая работи десет пъти за един печат.
+ */
+let zakachenoZaPechat = false;
+
+export function otlepiZaPechat(): void {
+  if (zakachenoZaPechat) return;
+  zakachenoZaPechat = true;
+  const zalepenite = (): HTMLElement[] => [
+    ...document.querySelectorAll<HTMLElement>('.zalepena-glava, .zalepena-kolona'),
+  ];
+  const pazeno = new Map<HTMLElement, { top: string; left: string }>();
+  window.addEventListener('beforeprint', () => {
+    pazeno.clear();
+    for (const el of zalepenite()) {
+      pazeno.set(el, { top: el.style.top, left: el.style.left });
+      el.style.top = '';
+      el.style.left = '';
+    }
+  });
+  window.addEventListener('afterprint', () => {
+    for (const [el, s] of pazeno) {
+      el.style.top = s.top;
+      el.style.left = s.left;
+    }
+    pazeno.clear();
+  });
+}
 export function zalepiGlavata(koren: HTMLElement): void {
   for (const tabl of koren.querySelectorAll<HTMLTableElement>('table.reshetka.darvo')) {
     const redove = [...tabl.querySelectorAll<HTMLTableRowElement>('thead tr')];

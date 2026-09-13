@@ -47,30 +47,48 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
   razdel = '2а · ИИ';
   await p.goto(`${ADRES}#/ii`);
   await p.waitForSelector('[data-agenti="aktivni"]');
+  // ══ ВСЕКИ Е ТАМ, КЪДЕТО КНИГАТА ГО СЛАГА · негов избор, 13.09 (запис 209) ═
+  //
+  // Дотук ГОРНАТА таблица показваше и петте, а долната казваше „Празна, както е
+  // в Книгата" — при положение че четири от петте носят `aktiven: false` в самата
+  // Книга. Екранът противоречеше на собствените си данни: активният е ЕДИН, а
+  // долната секция зееше.
   proveri(
-    'петте му агента под „Активни агенти"',
-    await p.$$eval('[data-agenti="aktivni"] tr.red', (es) => es.length),
-    5,
+    'ЕДИН активен горе · и ЧЕТИРИМАТА неактивни ДОЛУ, не в празна вест',
+    `${await p.$$eval('[data-agenti="aktivni"] tr.red', (es) => es.length)} · ${await p.$$eval(
+      '[data-agenti="neaktivni"] tr.red',
+      (es) => es.length,
+    )}`,
+    '1 · 4',
   );
   proveri(
-    'Сверчикът работи · другите идват с ход 11а',
+    'горе е Сверчикът и той РАБОТИ',
     (await tekstoveNa(p, '[data-agenti="aktivni"] [data-status]')).join(' · '),
-    'работи · без мрежа · чист код · идва с ход 11а · идва с ход 11а · идва с ход 11а · идва с ход 11а',
+    'работи · без мрежа · чист код',
   );
   proveri(
-    '„Неактивни агенти" КАЗВА, че е празна, вместо да зее с таблица без редове',
-    (await tekstNa(p, '[data-agenti="neaktivni"]')).startsWith('Празна, както е в Книгата.'),
-    true,
+    'долу всеки казва КАКВО е и КОГА идва · не тире',
+    (await tekstoveNa(p, '[data-agenti="neaktivni"] [data-status]')).join(' · '),
+    'идва с ход 11а · идва с ход 11а · идва с ход 11а · идва с ход 11а',
   );
   proveri(
-    'Сверчикът има време и отчет · двете клетки не са празни',
+    'и колоната „последно викан" казва СВОЕТО, не статуса',
+    (await tekstoveNa(p, '[data-agenti="neaktivni"] [data-vreme]')).join(' · '),
+    'никога · никога · никога · никога',
+  );
+  proveri(
+    'Сверчикът има време и отчет · тук Книгата още не е четена и той го КАЗВА',
     await p.$eval('[data-agenti="aktivni"] tr.red [data-otchet-agent]', (e) =>
       (e.textContent ?? '').trim(),
     ),
     'няма прочетена Книга',
   );
+  proveri(
+    'и разписки още няма · те идват с първия внос или с мострата',
+    await tekstNa(p, '[data-vnasyaniya-nyama]'),
+    'още няма',
+  );
   proveri('няма прочетена Книга', await tekstNa(p, '[data-otchet-vest]'), 'няма прочетена Книга');
-  proveri('няма разписки', await tekstNa(p, '[data-vnasyaniya-nyama]'), 'още няма');
 
   // ══ 2б · неподвижната точка · износ → внос = нищо · и нулата се записва ═
   razdel = '2б · неподвижната точка';
