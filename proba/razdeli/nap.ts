@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { prochetiKniga } from '../../src/kniga/ooxml.ts';
 import type { KonteksNaProhoda } from '../yadro/kontekst.ts';
 import { natisniButon, tekstNa, tekstoveNa } from '../yadro/pomoshtni.ts';
-import { mesetsatNaProhoda } from '../yadro/kalendar.ts';
+import { mesetsatNaProhoda, mesetsatPredi } from '../yadro/kalendar.ts';
 import { ADRES } from '../yadro/server.ts';
 
 const SMETKI = 'Сметки';
@@ -14,6 +14,9 @@ const SMETKI = 'Сметки';
  * прозореца и „■" не се пише никъде (ADR-015).
  */
 const MESETS = mesetsatNaProhoda();
+const MESETS_PREDI = mesetsatPredi();
+/** ДДС за двата месеца · 500 + 300, разход, с минус (правило 16) */
+const EVRO_MINUS_800 = '-800,00 €';
 /** еврото по нормата му · тясна пауза (U+202F) */
 const EVRO_500 = '500,00 €';
 const EVRO_MINUS_500 = '-500,00 €';
@@ -213,6 +216,60 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
     (await tekstNa(p, '[data-obyasnenie="proverka-zabavyane"]')).includes('ЕДИН МЕСЕЦ'),
     true,
   );
+  // ══ 5ж · ДДС Е ЕДИН РЕД · негово, 14.09 в 00:11 (запис 224) ═════════════
+  //
+  // „ДДС и Задачи(Дела,( не се резпределя всеки месец на нов ред, а се дава в
+  // реда си в календара."
+  //
+  // Правилото от запис 213 т.2 работеше за приходите и разходите, но МИНАВАШЕ
+  // ПОКРАЙ ДДС: там се рисуваше по един ред НА МЕСЕЦ („ДДС 2026-08 · за
+  // внасяне", „ДДС 2026-09 · за внасяне", …). Тук се вписва ВТОРИ месец —
+  // предишният, защото листът реже колоните си от него нататък — и се пита
+  // колко реда са станали.
+  razdel = '5ж · ДДС е един ред';
+  await p.click('[data-podtab="nap"]');
+  await p.waitForSelector('[data-dds-forma]');
+  await p.fill('[data-dds-mesets]', MESETS_PREDI);
+  await p.fill('[data-dds-nachislen]', '700');
+  await p.fill('[data-dds-kredit]', '400');
+  await p.fill('[data-dds-deklarirano]', '300');
+  await p.fill('[data-dds-plateno]', '300');
+  await p.click('[data-dds-zapishi]');
+  await p.waitForFunction(
+    () => document.querySelectorAll('[data-reshetka="dds"] tbody tr.red').length === 2,
+  );
+  await p.click('[data-podtab="smetki"]');
+  await p.waitForSelector('[data-reshetka="razhod"]');
+  proveri(
+    'ДВА месеца ДДС · ЕДИН ред на екрана · и двата в календара',
+    `редове ${await p.$$eval('tr.red.dds', (es) => es.length)} · група ${await p.$eval(
+      'tr.red.dds',
+      (e) => e.getAttribute('data-v-grupata'),
+    )} · клетки ${await p.$$eval('tr.red.dds td.takt.dvizhenie', (es) => es.length)}`,
+    'редове 1 · група 2 · клетки 2',
+  );
+  proveri(
+    'сборът на реда Е сборът на ДДС · едно число, един дом',
+    `${await p.$eval('tr.red.dds td.kletka.evro', (e) => (e as HTMLElement).innerText.trim())} · ${await tekstNa(
+      p,
+      '[data-sbor-dds="razhod"]',
+    )}`,
+    `${EVRO_MINUS_800} · ${EVRO_MINUS_800}`,
+  );
+  proveri(
+    // ДДС е СМЯТАН от таблицата (правило 20) · няма какво да се мести
+    'клетките на ДДС НЕ носят белег за редакция · той е сметнат, не е движение',
+    await p.$$eval('tr.red.dds td.takt[data-redakt]', (es) => es.length),
+    0,
+  );
+  proveri(
+    'и броячът КАЗВА, че един ред се чете вместо два',
+    (await tekstNa(p, '[data-sverka="filtar-razhod"]')).includes(
+      '1 повторения се четат в календара',
+    ),
+    true,
+  );
+
   // подтабът се ПОМНИ · оставен на НАП, той чака следващия раздел на грешно място
   await p.click('[data-podtab="smetki"]');
   await p.waitForSelector('[data-vkarvane-pravo]');
