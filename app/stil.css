@@ -1999,3 +1999,32 @@ select.pole:required {
 .ekran .arhiv-red > .arhiv-ime {
   text-decoration: line-through;
 }
+
+/* ═══ ОБЯСНЕНИЕТО · цяло при Начало, знак при Нормален ═══════════════════
+
+   Негово, 13.09 (запис 213) т.3: „Текстовете с обяснение на моите думи да се
+   показва в Начален Хелп, а в Стандартния да е чист без текст освен при
+   задържане на различните места."
+
+   Знакът не се маха съвсем: без него човек не би знаел, че тук ИМА какво да
+   се прочете, и обяснението би било скрито, не прибрано. Един знак заема
+   нищо и казва „задръж тук". */
+:root[data-pomosht="normalno"] .obyasnenie .dumite {
+  display: none;
+}
+
+.ekran .obyasnenie .znak {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 1px solid var(--linija);
+  border-radius: 50%;
+  color: var(--sivo);
+  font-size: 0.7rem;
+}
+
+:root[data-pomosht="nachalo"] .obyasnenie .znak {
+  display: none;
+}

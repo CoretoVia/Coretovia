@@ -207,7 +207,7 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
   );
   proveri(
     'и казва защо има забавяне от месец без Извлечения',
-    (await tekstNa(p, '[data-proverka-zabavyane]')).includes('ЕДИН МЕСЕЦ'),
+    (await tekstNa(p, '[data-obyasnenie="proverka-zabavyane"]')).includes('ЕДИН МЕСЕЦ'),
     true,
   );
   // подтабът се ПОМНИ · оставен на НАП, той чака следващия раздел на грешно място

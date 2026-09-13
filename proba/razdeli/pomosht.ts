@@ -118,6 +118,39 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
     'normalno',
   );
 
+  // ══ (г2) ОБЯСНЕНИЯТА СЕ ПРИБИРАТ · негово, 13.09 (запис 213) т.3 ═════════
+  // „Текстовете с обяснение на моите думи да се показва в Начален Хелп, а в
+  // Стандартния да е ЧИСТ БЕЗ ТЕКСТ освен при задържане на различните места."
+  await p.goto(`${ADRES}#/smetki`);
+  await p.waitForSelector('.obyasnenie');
+  proveri(
+    'при НОРМАЛЕН обяснението не се чете на екрана · остава само знакът',
+    await p.$$eval('.obyasnenie', (es) =>
+      es.map((e) => (e as HTMLElement).innerText.trim()).join(''),
+    ),
+    '?'.repeat(await p.$$eval('.obyasnenie', (es) => es.length)),
+  );
+  // ТОЧНАТА ДУМА, не дължина · „по-дълго от N" минава и когато текстът се е
+  // удвоил, а тук се пита ТОЧНО кое обяснение стои под кой блок.
+  proveri(
+    'но ДУМИТЕ ги има · идват при задържане, както при полетата',
+    await p.$eval('.obyasnenie', (e) => e.getAttribute('data-podskazka') ?? ''),
+    'Знакът решава страната: приходът е +, разходът е − (правило 16).',
+  );
+  await p.selectOption(STEPEN_V_GLAVATA, 'nachalo');
+  await p.waitForFunction(
+    () => (document.querySelector('.obyasnenie') as HTMLElement | null)?.innerText.trim() !== '?',
+  );
+  proveri(
+    'при НАЧАЛО СЪЩОТО обяснение стои цяло на екрана',
+    await p.$eval('.obyasnenie', (e) => (e as HTMLElement).innerText.trim()),
+    'Знакът решава страната: приходът е +, разходът е − (правило 16).',
+  );
+  await p.selectOption(STEPEN_V_GLAVATA, 'normalno');
+  await p.waitForFunction(
+    () => (document.querySelector('.obyasnenie') as HTMLElement | null)?.innerText.trim() === '?',
+  );
+
   // ══ (д) смяна от Настройки → главата казва същото ═══════════════════════════
   await p.goto(`${ADRES}#/nastroyki`);
   await p.waitForSelector(STEPEN_V_NASTROYKI);

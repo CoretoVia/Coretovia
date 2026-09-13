@@ -13,7 +13,7 @@ import { napalniSMostra, type RedNaMostrata } from '../../src/mostra/napalni.js'
 import { dostapaMi } from '../../src/smetach/pravo.js';
 import { dumiZaGreshka } from '../../src/yadro/dumi.js';
 import type { KonteksNaEkrana } from '../kontekst.js';
-import { podskazka } from '../reshetka/podskazka.js';
+import { obyasnenie, podskazka } from '../reshetka/podskazka.js';
 import { h, sloji, type Zapechatan } from '../reshetka/shablon.js';
 
 /**
@@ -65,7 +65,7 @@ function lichniteMiDanni(k: KonteksNaEkrana): Zapechatan {
         <thead><tr><th>ос</th><th>право</th><th>какво пише в Книгата</th></tr></thead>
         <tbody>${redovete}</tbody>
       </table>
-      <p class="pod-tablitsata">Личният изглед само СТЕСНЯВА (правило 23): каквото Длъжността не дава, не се отваря от тук.</p>
+      ${obyasnenie('Личният изглед само СТЕСНЯВА (правило 23): каквото Длъжността не дава, не се отваря от тук.')}
     </section>`;
 }
 

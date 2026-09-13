@@ -69,7 +69,7 @@ import {
 import { pishi, pishiVPole, sabiri, type Tsentove, tsentove } from '../../src/yadro/pari.js';
 import type { KonteksNaEkrana } from '../kontekst.js';
 import { otvoriChernova } from '../reshetka/chernova.js';
-import { podskazka, podskazkaSDumi } from '../reshetka/podskazka.js';
+import { obyasnenie, podskazka, podskazkaSDumi } from '../reshetka/podskazka.js';
 import { h, sloji, type Zapechatan } from '../reshetka/shablon.js';
 import { chetiEkranno, zapomniEkranno } from '../reshetka/pamet-ekran.js';
 import {
@@ -225,7 +225,7 @@ interface RedNaEkrana {
 function blokatNaPokazatelite(spisak: readonly Pokazatel[]): Zapechatan {
   return h`<section class="sektsiya" data-sektsiya="pokazateli">
       <h2 class="lenta">Данни за коефициентите</h2>
-      <p class="pod-tablitsata">Събрано от Приход и Разход за показания период · всяко число носи формулата си при задържане.</p>
+      ${obyasnenie('Събрано от Приход и Разход за показания период · всяко число носи формулата си при задържане.')}
       <div class="poleta-s-tsifri" data-pokazateli>${spisak.map(
         (x) =>
           h`<div class="pole-s-tsifra" data-pokazatel="${x.klyuch}"${podskazka(
@@ -1023,7 +1023,13 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
             : 'проверката не е пускана'
         }</span>
       </div>
-      <p class="pod-tablitsata" data-proverka-zabavyane>Обикновено има забавяне ОТ ЕДИН МЕСЕЦ, докато няма Извлечения от банка срещу вкараните Фактури Кеш, Фактури Карта, Заплати Кеш и Заплати Банка. Четенето на самите извлечения чака файл-мостра от него (ход 11.3) — дотогава тук се сверява само вкараното срещу сметките.</p>
+      ${obyasnenie(
+        'Обикновено има забавяне ОТ ЕДИН МЕСЕЦ, докато няма Извлечения от банка срещу ' +
+          'вкараните Фактури Кеш, Фактури Карта, Заплати Кеш и Заплати Банка. Четенето на ' +
+          'самите извлечения чака файл-мостра от него (ход 11.3) — дотогава тук се сверява ' +
+          'само вкараното срещу сметките.',
+        'proverka-zabavyane',
+      )}
       ${
         !proverkataEPusnata
           ? h`<p class="vest" data-proverka-chaka>натисни „Проверка", за да се появи таблицата на разминаванията</p>`
@@ -1134,7 +1140,7 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
         )}</tr></thead>
         <tbody class="tablitsa"><tr class="prazen-red"><td colspan="${String(vsichkiKoloni.length)}">Тук се отваря черновата. Натисни „Добави ред с пари" горе и редът се пише в тази таблица; записаният ред застава в секцията си долу.</td></tr></tbody>
       </table>
-      <p class="pod-tablitsata">Знакът решава страната: приходът е +, разходът е − (правило 16).</p>
+      ${obyasnenie('Знакът решава страната: приходът е +, разходът е − (правило 16).')}
     </section>
     <section class="smetki-tyalo" data-smetki>
       <div class="smetki-blokove">
@@ -1144,7 +1150,7 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
         ${razlikiteHTML()}
         <section class="tablitsa-blok" data-blok="vkarvane">
           <h2 class="lenta" translate="no">Вкарване</h2>
-          <p class="pod-tablitsata">Заплати Кеш · Фактури Кеш · Фактури Карта на едно място (негово, 05.09).</p>
+          ${obyasnenie('Заплати Кеш · Фактури Кеш · Фактури Карта на едно място (негово, 05.09).')}
           <p class="pod-tablitsata" data-vkarvane-pravo>${
             v.lipsvashti.length > 0
               ? `Вкарването е затворено: липсва${v.lipsvashti.length === 1 ? '' : 'т'} секция${v.lipsvashti.length === 1 ? '' : 'и'} „${v.lipsvashti.join('" · „')}". Върни име${v.lipsvashti.length === 1 ? 'то' : 'ната'} от Настройки → Номенклатури.`
