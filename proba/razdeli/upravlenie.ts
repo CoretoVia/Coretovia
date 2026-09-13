@@ -304,6 +304,69 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
   );
 
   // ══ 3в · филтърът · сметката · тактът · скриването ═══════════════════
+  // ══ 3б3 · ДЛ-Т56 · ГЛАВАТА СТОИ, СКРОЛЪТ ТЕЧЕ ══════════════════════════
+  //
+  // Негово, 08.09 (запис 64), ДОСЛОВНО: „и за таблицата, и за диаграмата
+  // хоризонталния скрол. **Важно е това, скролът**" · и „**отгоре е филтърът**".
+  //
+  // Дотук главата беше `position: static` и просто избягваше нагоре: блокът носи
+  // `overflow-x: auto` заради хоризонталния скрол, а CSS не позволява едната ос да
+  // е `auto`, а другата `visible` — тъй че блокът беше скролер и по вертикала,
+  // мълчаливо и без таван, и залепеното вътре нямаше за какво да се лепи.
+  //
+  // Мери се НА ДЕЛО: скролва се вътре в блока и се пита къде е главата. Два пъти,
+  // защото първите пиксели вдигат заглавието НАД таблицата и това е вярно —
+  // залепването почва след него.
+  razdel = '3б3 · главата стои, скролът тече';
+  const zalepenoto = await p.evaluate(() => {
+    const tabl = document.querySelector<HTMLTableElement>('[data-reshetka="zadachi"]');
+    const blok = tabl?.closest<HTMLElement>('.darvo-blok') ?? null;
+    const glava = tabl?.querySelector<HTMLElement>('thead tr:first-child th') ?? null;
+    const filtar = tabl?.querySelector<HTMLElement>('thead tr.filtar td') ?? null;
+    const lyava = tabl?.querySelector<HTMLElement>('tbody .zalepena-kolona') ?? null;
+    if (blok === null || glava === null || filtar === null || lyava === null) return 'липсва възел';
+    const bs = getComputedStyle(blok);
+    const gs = getComputedStyle(glava);
+    const fs = getComputedStyle(filtar);
+    // ПОВЕДЕНИЕТО се мери само когато има какво да се скролва · при четири реда
+    // главата няма къде да избяга и „стои" би било вярно и без нито едно правило
+    const gore = (): number => Math.round(glava.getBoundingClientRect().top);
+    const nalyavo = (): number => Math.round(lyava.getBoundingClientRect().left);
+    let stoiPriSkrol = true;
+    if (blok.scrollHeight > blok.clientHeight) {
+      blok.scrollTop = 300;
+      const a = gore();
+      blok.scrollTop = 900;
+      stoiPriSkrol = a === gore();
+      blok.scrollTop = 0;
+    }
+    let stoiNastrani = true;
+    if (blok.scrollWidth > blok.clientWidth) {
+      blok.scrollLeft = 400;
+      const a = nalyavo();
+      blok.scrollLeft = 800;
+      stoiNastrani = a === nalyavo();
+      blok.scrollLeft = 0;
+    }
+    return [
+      // БЛОКЪТ е скролерът · и по двете оси, с таван на височината
+      bs.overflowX !== 'visible' && bs.overflowY !== 'visible',
+      bs.maxHeight !== 'none',
+      // ГЛАВАТА и ФИЛТЪРЪТ се лепят за него · `top` е ЧИСЛО, не `auto`
+      gs.position === 'sticky' && gs.top !== 'auto',
+      fs.position === 'sticky' && fs.top !== 'auto',
+      // и филтърът стои ПОД главата, не върху нея
+      Number.parseFloat(fs.top) > Number.parseFloat(gs.top),
+      stoiPriSkrol,
+      stoiNastrani,
+    ].join(' · ');
+  });
+  proveri(
+    'Т56 · блокът е скролерът · главата и филтърът се лепят за НЕГО и стоят',
+    zalepenoto,
+    'true · true · true · true · true · true · true',
+  );
+
   razdel = '3в · филтър · сбор · такт';
   // негово, 12.09 (запис 199): филтърът е падащо меню от ВЪВЕДЕНОТО в колоната —
   // избира се готова стойност, вместо да се познава как е изписана
