@@ -153,4 +153,50 @@ describe('дългът · петнайсетата порта', () => {
     expect(p.status).not.toBe(0);
     expect(p.stdout).toContain('чака „Т99", който го няма в регистъра');
   }, 120_000);
+
+  /**
+   * ЦЕНАТА, ПЛАТЕНА НА 13.09.2026 · мярката ловеше себе си, не дефекта.
+   *
+   * Единайсет от дванайсетте реда „построено и невикано" се мереха с `vid: 'ima'`.
+   * Той брои ПОЯВА на името в гол код — а гол `import { X }` е поява. Тоест редът,
+   * който казва „никой не го вика", можеше да се затвори от самия внос.
+   * И `broy` четеше СУРОВ текст: изречение в коментар стигаше.
+   *
+   * Тук се доказва разликата върху НАРОЧНО счупено дърво: един файл, който само
+   * ВНАСЯ, и един коментар, който само ОБЕЩАВА.
+   */
+  it('МЯРКАТА ЛОВИ · внос не е викане (`vika` срещу `ima`) · и коментар не е код (`broy`)', () => {
+    const { koren, registar, pusni } = darvo(mkdtempSync(join(tmpdir(), 'dalg-vika-')));
+
+    // `b.ts` ВНАСЯ `zhiv`, но не го вика · и ОБЕЩАВА `.podpishi(` в коментар
+    writeFileSync(
+      join(koren, 'src', 'b.ts'),
+      [
+        "import { zhiv } from './a.js';",
+        '',
+        '// после ще викаме .podpishi( тук',
+        'export const spisak = [zhiv];',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+
+    registar([
+      // `ima` вижда името · `vika` не вижда викане · пада само вторият
+      otvoren('Т1', [{ vid: 'ima', ime: 'zhiv', v: ['src'], izvan: ['src/a.ts'] }]),
+      otvoren('Т2', [{ vid: 'vika', ime: 'zhiv', v: ['src'], izvan: ['src/a.ts'] }]),
+      // обещанието в коментар не пали зелено · същият шаблон СЪС суровия текст пали
+      otvoren('Т3', [{ vid: 'broy', shablon: '\\.podpishi\\(', v: ['src'], min: 1 }]),
+      otvoren('Т4', [
+        { vid: 'broy', shablon: '\\.podpishi\\(', v: ['src'], min: 1, sKomentari: true },
+      ]),
+    ]);
+    const r = pusni(['--proveri']);
+
+    // Т1 и Т4 държат → „ВЕЧЕ ЗАТВОРЕНИ" · Т2 и Т3 не държат → мълчат
+    expect(r.stdout, 'внос пали `ima`').toContain('„Т1" е ВЕЧЕ ЗАТВОРЕН');
+    expect(r.stdout, 'внос НЕ пали `vika`').not.toContain('„Т2" е ВЕЧЕ ЗАТВОРЕН');
+    expect(r.stdout, 'коментар НЕ пали `broy`').not.toContain('„Т3" е ВЕЧЕ ЗАТВОРЕН');
+    expect(r.stdout, '`sKomentari` връща суровия текст').toContain('„Т4" е ВЕЧЕ ЗАТВОРЕН');
+  }, 120_000);
 });

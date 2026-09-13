@@ -25,7 +25,7 @@
     {
       "beleg": "Н1",
       "kakvo": "`vazstanovi` · 113 реда без викащ · **Журналът не може да се върне от резервно копие**",
-      "kade": "`src/yadro/vrata.ts:184`",
+      "kade": "`src/yadro/vrata.ts:198`",
       "hod": "10а",
       "predi": [
         "А0"
@@ -34,14 +34,18 @@
       "otpushva": [],
       "uslovia": [
         {
-          "vid": "ima",
+          "vid": "vika",
           "ime": "vazstanovi",
           "v": [
             "app"
           ]
+        },
+        {
+          "vid": "test",
+          "beleg": "Н1"
         }
       ],
-      "kak": "или бутон в Профил с тест, или `narisuvayOstanalite` го обявява с думи",
+      "kak": "`app/` вика `vazstanovi` по ЖИВ път от файл — бутон „Върни от копие\" в Профил, до „Провери веригата\" — захранен от NDJSON на ход 10а, И тест с белег „Н1 · …\", който къса верига, внася копието и проверява, че Журналът е цял. Обявяването „с думи\" (сив бутон по правило 12) НЕ затваря реда.",
       "sastoyanie": "otvoren"
     },
     {
@@ -54,18 +58,22 @@
       "otpushva": [],
       "uslovia": [
         {
-          "vid": "ima",
+          "vid": "vika",
           "ime": "zakragli",
           "v": [
             "app"
           ]
         },
         {
-          "vid": "ima",
+          "vid": "vika",
           "ime": "razlikaOtZakraglyane",
           "v": [
             "app"
           ]
+        },
+        {
+          "vid": "test",
+          "beleg": "Н10"
         }
       ],
       "kak": "Сметки показва закръгленото на стотици и разликата от закръглянето до него; закръгленото не влиза в сбор (тест)",
@@ -81,7 +89,7 @@
       "otpushva": [],
       "uslovia": [
         {
-          "vid": "ima",
+          "vid": "vika",
           "ime": "tsenaNagore",
           "v": [
             "src",
@@ -90,6 +98,10 @@
           "izvan": [
             "src/yadro/valuta.ts"
           ]
+        },
+        {
+          "vid": "test",
+          "beleg": "Н11"
         }
       ],
       "kak": "оценената цена в Продажби е `tsenaNagore(точното)`; точното остава за разликата и сборовете; тест по ценовата листа",
@@ -105,13 +117,19 @@
       "otpushva": [],
       "uslovia": [
         {
-          "vid": "broy",
-          "shablon": "import \\{[^}]*\\breshetka\\b[^}]*\\} from '[^']*smetach/gant\\.js'",
+          "vid": "vika",
+          "ime": "reshetka",
           "v": [
-            "src",
             "app"
           ],
-          "min": 1
+          "min": 2
+        },
+        {
+          "vid": "vika",
+          "ime": "reshetka",
+          "v": [
+            "src/kniga"
+          ]
         }
       ],
       "kak": "един дом на решетката, виканo от двата екрана и от Книгата; трите инлайн копия ги няма (обход 8б)",
@@ -129,6 +147,14 @@
         {
           "vid": "fayl",
           "pat": "src/agenti/protokol.ts"
+        },
+        {
+          "vid": "broy",
+          "shablon": "брои НУЛА файла",
+          "v": [
+            "tests"
+          ],
+          "max": 0
         }
       ],
       "kak": "`src/agenti/` съществува и `tests/sloevete.test.ts` спира да казва „брои нула файла“; Сверчикът минава под правилото за агента",
@@ -136,7 +162,7 @@
     },
     {
       "beleg": "Н14",
-      "kakvo": "логът (`src/yadro/zapis.ts`) вече се пълни от котвата, но никой не го чете: `redove()` · `iznesi()` нямат викащ в `app/` — човекът не може да свали диагностиката (правило 12 · записът от 08.09 „бутон „Свали лога“ в Настройки“)",
+      "kakvo": "логът (`src/yadro/zapis.ts`) вече се пълни от котвата, но никой не го чете: `redove()` · `iznesi()` · `broy()` · `izpusnati()` нямат нито един викащ в `app/` или `src/` — човекът не може да свали диагностиката (правило 12). *(До 13.09 тук стоеше „записът от 08.09 „бутон „Свали лога\" в Настройки\"\" — ТАКЪВ ЗАПИС НЯМА. Търсено във всичките осем дни на `docs/izvori/dni/`: нула попадения по „лог\" и по „Свали\". Приписана дума в самия дълг, срещу правило 17; махната.)*",
       "kade": "app/main.ts · src/yadro/zapis.ts",
       "hod": "8",
       "predi": [],
@@ -145,20 +171,28 @@
       "uslovia": [
         {
           "vid": "broy",
-          "shablon": "\\.(?:iznesi|redove)\\(",
+          "shablon": "\\.iznesi\\(",
+          "v": [
+            "app"
+          ],
+          "min": 1
+        },
+        {
+          "vid": "broy",
+          "shablon": "\\.izpusnati\\(",
           "v": [
             "app"
           ],
           "min": 1
         }
       ],
-      "kak": "бутон в Настройки/Профил сваля лога като NDJSON и проходът го натиска",
+      "kak": "бутон в Профил сваля лога като NDJSON, И екранът показва колко реда са ИЗПАДНАЛИ от пръстена (`izpusnati`) — самият модул го иска: „Мълчаливо изпуснат ред е по-лош от липсващ лог: той кара четящия да вярва, че е видял всичко.\" Проходът натиска бутона.",
       "sastoyanie": "otvoren"
     },
     {
       "beleg": "Н15",
-      "kakvo": "изважданията на пари са гол минус (`dalzhimo − plateno` в `src/smetach/dds.ts` · `tsena − vneseno` · `ostatak` в `src/smetach/prodazhbi.ts`), а `izvadi` (`src/yadro/pari.ts`) носи същата преграда като `sabiri` и няма викащ",
-      "kade": "src/smetach/dds.ts · src/smetach/prodazhbi.ts · src/yadro/pari.ts",
+      "kakvo": "изважданията на пари са гол минус, а `izvadi` (`src/yadro/pari.ts:42`) пази резултата в цели центове и няма нито един викащ. Обходено на 13.09: НЕ пет, а поне ДЕВЕТ места — `src/smetach/dds.ts:116` · `:127` · `:148` · `:151` · `src/smetach/prodazhbi.ts:140` · `src/smetach/kalkulator/stoynost.ts:184` · `src/smetach/pokazateli.ts:82` · `src/smetach/nahodki-nap.ts:173` · `src/yadro/sverka.ts:50`. И преди да се шие: `sverka()` е фунията, през която минава всяка разлика пред човека, но носи и `MERKA.broy` (бройки, не пари) — тъй че там `izvadi` не влиза сляпо. Кое минава през преградата и кое не е РЕШЕНИЕ преди код (правило 26), не еднореден шев.",
+      "kade": "src/yadro/pari.ts:42 · src/smetach/dds.ts · prodazhbi.ts · kalkulator/stoynost.ts · pokazateli.ts · nahodki-nap.ts · src/yadro/sverka.ts",
       "hod": "8",
       "predi": [
         "Н4"
@@ -167,16 +201,19 @@
       "otpushva": [],
       "uslovia": [
         {
-          "vid": "broy",
-          "shablon": "import \\{[^}]*\\bizvadi\\b[^}]*\\} from '[^']*yadro/pari\\.js'",
+          "vid": "vika",
+          "ime": "izvadi",
           "v": [
-            "src",
-            "app"
+            "src/smetach"
           ],
-          "min": 1
+          "min": 8
+        },
+        {
+          "vid": "test",
+          "beleg": "Н15"
         }
       ],
-      "kak": "всяко изваждане на пари минава през `izvadi`; дробна разлика хвърля с думи (тест)",
+      "kak": "ВСЯКО изваждане на пари минава през `izvadi`; дробна разлика хвърля с думи (тест). Броят гол минус върху полета `_st` е НУЛА.",
       "sastoyanie": "otvoren"
     },
     {
@@ -191,10 +228,9 @@
       "otpushva": [],
       "uslovia": [
         {
-          "vid": "broy",
-          "shablon": "from '[^']*yadro/zapis(?:\\.js)?'",
+          "vid": "vika",
+          "ime": "napraviZapisvach",
           "v": [
-            "src",
             "app"
           ],
           "min": 1
@@ -208,7 +244,7 @@
     {
       "beleg": "Н3",
       "kakvo": "`verigaLichna` · `otpechatakNaVeriga` · само от тест (беше „`verigaLichna` · `podpishi`“; `podpishi` е свой ред ДЛ-Н8 · ход 10а)",
-      "kade": "`src/yadro/samolichnost.ts:156`",
+      "kade": "`src/yadro/samolichnost.ts:156` (`verigaLichna`) · `:176` (`otpechatakNaVeriga`)",
       "hod": "10ж",
       "predi": [
         "А0"
@@ -217,18 +253,22 @@
       "otpushva": [],
       "uslovia": [
         {
-          "vid": "ima",
+          "vid": "vika",
           "ime": "verigaLichna",
           "v": [
             "app"
           ]
         },
         {
-          "vid": "ima",
+          "vid": "vika",
           "ime": "otpechatakNaVeriga",
           "v": [
             "app"
           ]
+        },
+        {
+          "vid": "test",
+          "beleg": "Н3"
         }
       ],
       "kak": "лична верига се отваря и Профил я показва",
@@ -246,15 +286,13 @@
       "otpushva": [],
       "uslovia": [
         {
-          "vid": "ima",
+          "vid": "vika",
           "ime": "sabiri",
           "v": [
             "src",
             "app"
           ],
-          "izvan": [
-            "src/yadro/pari.ts"
-          ]
+          "min": 19
         }
       ],
       "kak": "✔ **правило 3 вече казва истината** (`CLAUDE.md`): сборът се пази от преградата за цели числа, а вторият независим път е СВЕРКАТА банка ↔ въведено · остава да се закачи живият викащ на `sabiri`, което вече не е въпрос, а работа",
@@ -265,7 +303,7 @@
     {
       "beleg": "Н5",
       "kakvo": "`PoSvoyataVeriga` · построена и тествана, не е закачена",
-      "kade": "`src/yadro/pravata.ts:134`",
+      "kade": "`src/yadro/pravata.ts:126`",
       "hod": "10б",
       "predi": [
         "Т2"
@@ -274,14 +312,26 @@
       "otpushva": [],
       "uslovia": [
         {
-          "vid": "ima",
+          "vid": "vika",
           "ime": "PoSvoyataVeriga",
           "v": [
             "app"
           ]
+        },
+        {
+          "vid": "broy",
+          "shablon": "PISACH_NA_KNIGATA",
+          "v": [
+            "app"
+          ],
+          "max": 0
+        },
+        {
+          "vid": "test",
+          "beleg": "Н5"
         }
       ],
-      "kak": "`app/main.ts` я подава и тест доказва отказа",
+      "kak": "`app/main.ts` подава `PoSvoyataVeriga`, обвила `LichnoESamoTvoe`, И вече НЕ подава `PISACH_NA_KNIGATA` като писач — докато писачът е константа, оградата е надпис. Тест доказва отказа при чужда верига.",
       "sastoyanie": "otvoren"
     },
     {
@@ -294,7 +344,7 @@
       "otpushva": [],
       "uslovia": [
         {
-          "vid": "ima",
+          "vid": "vika",
           "ime": "proveriPodpisVBrauzara",
           "v": [
             "src",
@@ -303,6 +353,10 @@
           "izvan": [
             "src/nositel/samolichnost-web.ts"
           ]
+        },
+        {
+          "vid": "test",
+          "beleg": "Н6"
         }
       ],
       "kak": "приемането на покана и печатът на папката минават през проверката на подписа; фалшив печат → отказ с думи, и тест го доказва",
@@ -318,7 +372,7 @@
       "otpushva": [],
       "uslovia": [
         {
-          "vid": "ima",
+          "vid": "vika",
           "ime": "razpredeli",
           "v": [
             "src",
@@ -327,6 +381,10 @@
           "izvan": [
             "src/yadro/pari.ts"
           ]
+        },
+        {
+          "vid": "test",
+          "beleg": "Н7"
         }
       ],
       "kak": "проекцията на кредита ползва `razpredeli` и Σ на частите = цялото до цент, с тест",
@@ -349,6 +407,10 @@
             "app"
           ],
           "min": 1
+        },
+        {
+          "vid": "test",
+          "beleg": "Н8"
         }
       ],
       "kak": "поканата и печатът на папката се подписват през `.podpishi(` в живия път (src/ или app/, не тест); тест доказва, че подмяна на байт чупи подписа",
@@ -1412,7 +1474,8 @@
           "v": [
             "app"
           ],
-          "min": 2
+          "min": 2,
+          "sKomentari": true
         },
         {
           "vid": "broy",
@@ -1620,16 +1683,22 @@
       "otpushva": [],
       "uslovia": [
         {
-          "vid": "test",
-          "beleg": "Т56"
-        },
-        {
           "vid": "broy",
           "shablon": "position: sticky",
           "v": [
             "app"
           ],
-          "min": 1
+          "razshireniya": [
+            ".css"
+          ],
+          "min": 3
+        },
+        {
+          "vid": "vika",
+          "ime": "zalepiGlavata",
+          "v": [
+            "app"
+          ]
         }
       ],
       "kak": "главата на таблица остава видима при скрол на страницата, БЕЗ да губи хоризонталния скрол · тест с име „Т56 · …\" и проверка в прохода",
