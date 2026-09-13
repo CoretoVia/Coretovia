@@ -244,9 +244,25 @@ export function otlepiZaPechat(): void {
     pazeno.clear();
   });
 }
+/**
+ * ВСЯКА ГЛАВА, НЕ САМО ДЪРВОТО · негово, 13.09 (запис 223): „Поправи залепения
+ * хедър НАВСЯКЪДЕ."
+ *
+ * Дотук се лепеше само `table.reshetka.darvo` — тоест решетката с календара.
+ * Но в Сметки под нея стоят още таблици (ДДС · Вкарване · Проверки · НАП), в
+ * Продажби — калкулаторът и таблиците на обектите, и всяка от тях е дълга.
+ * Мереното на 13.09 в подтаб НАП: три таблици, и трите с `position: static`
+ * глава, тоест имената на колоните отплуваха при първия скрол.
+ *
+ * Тук се минава през ВСЯКА таблица с глава. Празната глава се пропуска, а не
+ * се лепи празен ред — той би отнел височина и нищо не би казал.
+ */
 export function zalepiGlavata(koren: HTMLElement): void {
-  for (const tabl of koren.querySelectorAll<HTMLTableElement>('table.reshetka.darvo')) {
-    const redove = [...tabl.querySelectorAll<HTMLTableRowElement>('thead tr')];
+  for (const tabl of koren.querySelectorAll<HTMLTableElement>('table')) {
+    const redove = [...tabl.querySelectorAll<HTMLTableRowElement>('thead tr')].filter(
+      (r) => r.cells.length > 0,
+    );
+    if (redove.length === 0) continue;
     let otmestvane = 0;
     for (const red of redove) {
       for (const kletka of red.cells) {
@@ -262,6 +278,74 @@ export function zalepiGlavata(koren: HTMLElement): void {
       for (const kletka of posleden.cells) kletka.classList.add('posledna-zalepena-glava');
   }
 }
+/**
+ * ОТРЯЗАНИЯТ ТЕКСТ СЕ КАЗВА ЦЯЛ · при задържане, и в ДВАТА режима на хелпа.
+ *
+ * Негово, 13.09 (запис 223), ДОСЛОВНО: „полетата с текст в тясна колона в което
+ * поле не се вижда текста при задържане на полето да се показва целя текст,
+ * както хелпа работи, но и в двата режима на Хелпа и начален и нормален."
+ *
+ * На снимката му: „Наем · Б…" · „Крайрече…" · „Геодез…" · „Строит…" · „Проект …"
+ * — колоната е тясна и данните са отрязани с многоточие. Кой е обектът и коя е
+ * задачата, човек няма как да разбере, без да влачи ръба на колоната.
+ *
+ * ТУК СЕ ПИТА БРАУЗЪРЪТ, не се гадае: `scrollWidth > clientWidth` значи, че
+ * съдържанието НЕ СЕ ПОБИРА. Праг с брой знаци би сгрешил при всяка друга ширина
+ * на колоната, при всеки друг шрифт и при всяко влачене на ръба.
+ *
+ * ДВА ПРОХОДА, не един. Четенето на `scrollWidth` иска подредба; писането на
+ * атрибут я обезсилва. Смесени в един цикъл върху единайсет хиляди клетки, те
+ * карат браузъра да пресмята подредбата наново за всяка — първо се ЧЕТЕ всичко,
+ * после се ПИШЕ всичко.
+ *
+ * КЛЕТКА СЪС СВОЯ ПОДСКАЗКА СЕ ПРОПУСКА. Главите вече казват формулата
+ * (правило 31) и тя е ПО-ПЪЛНА от отрязаното име: измерено на 13.09, лепенето
+ * върху нея даваше „Състояние за… ⏎ Състояние за Имот или Състояние на Обект" —
+ * половин дума, залепена пред цялата. Тук се покриват само клетките, за които
+ * той пита: „полетата с текст в тясна колона", тоест ДАННИТЕ.
+ *
+ * И НЕ ЗАВИСИ ОТ СТЕПЕНТА · подсказката е един и същ механизъм за двата режима
+ * (`app/reshetka/podskazka.ts`); степента мени само подробността на НАШИТЕ думи.
+ * Отрязаното е НЕГОВИ данни и се показва винаги — той го поиска изрично.
+ */
+const BELEG_OTRYAZAN = 'otryazan';
+
+function seOtryazva(kletka: HTMLElement): boolean {
+  if (kletka.scrollWidth > kletka.clientWidth + 1) return true;
+  for (const dete of kletka.children)
+    if (dete instanceof HTMLElement && dete.scrollWidth > dete.clientWidth + 1) return true;
+  return false;
+}
+
+export function pokazhiOtryazanoto(koren: HTMLElement): void {
+  const kletki = [...koren.querySelectorAll<HTMLElement>('td, th')];
+  // ПЪРВО ЧЕТЕНЕТО · нищо не се пише, докато се мери
+  const nameren: { kletka: HTMLElement; tsyal: string }[] = [];
+  for (const kletka of kletki) {
+    // полето за писане си показва текста само̀ и носи свой курсор
+    if (kletka.querySelector('input, select, textarea, button') !== null) continue;
+    // своя подсказка бие отрязаното · тя казва повече от половин дума
+    if (kletka.dataset[BELEG_OTRYAZAN] !== 'da' && kletka.dataset['podskazka'] !== undefined)
+      continue;
+    const tsyal = (kletka.textContent ?? '').replace(/\s+/gu, ' ').trim();
+    if (tsyal === '') continue;
+    if (!seOtryazva(kletka)) continue;
+    nameren.push({ kletka, tsyal });
+  }
+  // ПОСЛЕ ПИСАНЕТО · и връщането на онова, което сме сложили миналия път
+  const noviteSa = new Set(nameren.map((n) => n.kletka));
+  // онова, което вече се побира (ръбът е разтеглен), си сваля подсказката
+  for (const kletka of kletki) {
+    if (kletka.dataset[BELEG_OTRYAZAN] !== 'da' || noviteSa.has(kletka)) continue;
+    kletka.removeAttribute('data-podskazka');
+    delete kletka.dataset[BELEG_OTRYAZAN];
+  }
+  for (const { kletka, tsyal } of nameren) {
+    kletka.dataset['podskazka'] = tsyal;
+    kletka.dataset[BELEG_OTRYAZAN] = 'da';
+  }
+}
+
 export function zalepiLyavata(koren: HTMLElement): void {
   for (const tabl of koren.querySelectorAll<HTMLTableElement>('table.reshetka.darvo')) {
     const glavi = [...tabl.querySelectorAll<HTMLElement>('thead tr:first-child th')];
@@ -410,6 +494,8 @@ export function zakachiVlacheneto(koren: HTMLElement): void {
         zalepiLyavata(koren);
         zalepiGlavata(koren);
       } else sloziShirinite(tabl);
+      // ширината се смени · онова, което се е побрало, вече няма подсказка
+      pokazhiOtryazanoto(koren);
     };
     const pusni = (): void => {
       document.removeEventListener('pointermove', mesti);

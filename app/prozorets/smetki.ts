@@ -1166,6 +1166,18 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
   /** ТРЕЗОРЪТ · трите му числа · негово, 13.09 (запис 203), точка 4 */
   const trezoraHTML = h`${zatvorenaKletka('trezor', 'Трезор', trezor.vnoski_st, trezor.formulaNaVnoskite)}${zatvorenaKletka('trezor-iztegleno', 'Изтеглено · Карта', trezor.iztegleno_st, trezor.formulaNaIzteglenoto)}${zatvorenaKletka('trezor-obshto', 'Общ Трезор', trezor.obshto_st, trezor.formulaNaObshtoto)}`;
 
+  /**
+   * ТЯЛОТО КАЗВА, ЧЕ Е С РЕШЕТКА · и оттам стилът знае да го подреди.
+   *
+   * Негово, 13.09 (запис 223): „Поправи залепения хедър навсякъде… и разшири
+   * заключените редове с еднаква ширина с таблицата и календар под тях."
+   *
+   * Прозорците с решетка се подреждат ИНАЧЕ от онези с текст: лентите горе са
+   * стационарни редове, а под тях стои ЕДИН скролер — и по двете оси. Белегът
+   * стои ТУК, при прозореца, който го е заслужил, а не като списък с ключове в
+   * стила: списък, който трябва да се пази ръчно, е списък, който ще изостане.
+   */
+  k.tyalo.classList.add('tyalo-s-reshetka');
   sloji(
     k.tyalo,
     h`
@@ -1214,6 +1226,7 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
       ${lentaNaDeystviyata(BUTONI_NA_UPRAVLENIE, butonHTML)}
     </div>
     <p class="greshka" data-greshka></p>
+    <div class="tyalo-skrol" data-skrol>
     ${
       podtab === 'nap'
         ? napHTML()
@@ -1275,7 +1288,8 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
         razhod_st: ddsSbor('razhod') + sborNaZadachite,
       }),
     )}`
-    }`,
+    }
+    </div>`,
   );
 
   zakachiReshetkata(k);

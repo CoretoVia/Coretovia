@@ -34,6 +34,7 @@ import {
   zakachiDesniyaButonNaGlavata,
   zakachiVlacheneto,
   otlepiZaPechat,
+  pokazhiOtryazanoto,
   zalepiGlavata,
   zalepiLyavata,
 } from './kolonite.js';
@@ -131,6 +132,8 @@ export function zakachiReshetkata(k: KonteksNaEkrana): void {
   sloziShiriniteNaDarvoto(k.tyalo);
   zalepiLyavata(k.tyalo);
   zalepiGlavata(k.tyalo);
+  // отрязаният текст казва себе си цял при задържане (негово, запис 223)
+  pokazhiOtryazanoto(k.tyalo);
   otlepiZaPechat();
   k.tyalo.addEventListener('click', (e) => {
     const buton = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-varni-koloni]');

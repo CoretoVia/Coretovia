@@ -760,14 +760,27 @@ export function narisuvayUpravlenie(k: KonteksNaEkrana): void {
         } · оценката им е изпразнена при потвърждаването</p>
       </div>`;
 
+  /**
+   * ТЯЛОТО КАЗВА, ЧЕ Е С РЕШЕТКА · и оттам стилът знае да го подреди.
+   *
+   * Негово, 13.09 (запис 223): „Поправи залепения хедър навсякъде… и разшири
+   * заключените редове с еднаква ширина с таблицата и календар под тях."
+   *
+   * Прозорците с решетка се подреждат ИНАЧЕ от онези с текст: лентите горе са
+   * стационарни редове, а под тях стои ЕДИН скролер — и по двете оси. Белегът
+   * стои ТУК, при прозореца, който го е заслужил, а не като списък с ключове в
+   * стила: списък, който трябва да се пази ръчно, е списък, който ще изостане.
+   */
+  k.tyalo.classList.add('tyalo-s-reshetka');
   sloji(
     k.tyalo,
     h`
-    <div class="zalepeno" data-zalepeno="upravlenie">
-      <div class="poleta-s-tsifri" data-poleta>${poletaHTML}</div>
+    <div class="zalepeno lenti" data-zalepeno="upravlenie">
+      <div class="lenta-red poleta-s-tsifri" data-poleta>${poletaHTML}</div>
       ${lentaNaDeystviyata(BUTONI_NA_UPRAVLENIE, butonHTML)}
     </div>
     <p class="greshka" data-greshka></p>
+    <div class="tyalo-skrol" data-skrol>
     <section class="upravlenie-tyalo" data-upravlenie>
       <div class="tablitsa-blok darvo-blok" data-blok="darvo">
         <h2 class="lenta" translate="no">${p.lenti[1] ?? 'ОБЕКТИ'}</h2>
@@ -798,7 +811,9 @@ export function narisuvayUpravlenie(k: KonteksNaEkrana): void {
         } · ${sastoyanietoNaRezhima(imetoNaSmetkite)}</p>
       </div>
       ${arhivatHTML()}
-      ${dumiteIIznosHTML(DUMI_OT_KNIGATA.upravlenie)}`,
+      ${dumiteIIznosHTML(DUMI_OT_KNIGATA.upravlenie)}
+    </section>
+    </div>`,
   );
 
   zakachiTemite(k.tyalo);
