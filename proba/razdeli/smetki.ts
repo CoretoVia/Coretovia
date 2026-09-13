@@ -49,6 +49,55 @@ async function noviyatRedSPari(p: Page): Promise<void> {
   await p.waitForSelector('[data-menyu]');
   await p.click('[data-menyu] [data-tochka="dobavi-dvizhenie"]');
 }
+/**
+ * ИЗМЕРЕНОТО НА ЧЕТИРИТЕ ЛЕНТИ · височина, дупка вдясно и ръбове.
+ *
+ * Негово, 13.09 (запис 203), точка 2: „да са с еднаква височина и **да са в
+ * симетрия колоните** … **без празни пространства**."
+ *
+ * И ДВЕТЕ СЕ МЕРЯТ, НЕ СЕ ГЛЕДАТ. Цената, платена на 12.09: поправка, направена
+ * на око, беше оборена с линийка в браузъра — пълнежът, който трябваше да
+ * затвори дупката, добавяше цял празен ред отдолу. Оттогава тази лента се съди
+ * само с `getBoundingClientRect`.
+ *
+ * `display: contents` не е клетка · обвивката на откритите бутони е прозрачна за
+ * мрежата, тъй че децата ѝ се броят на нейно място.
+ */
+async function izmeriLentite(p: Page): Promise<{
+  visochini: number;
+  dupki: number;
+  chuzhdiRabove: number;
+  kletki: string;
+}> {
+  return p.$$eval('[data-zalepeno="smetki"] > *', (lenti) => {
+    const opis = lenti.map((l) => {
+      const detsa = [...l.children].flatMap((c) =>
+        getComputedStyle(c).display === 'contents' ? [...c.children] : [c],
+      );
+      const r = l.getBoundingClientRect();
+      return {
+        visochina: Math.round(r.height),
+        do: Math.round(r.right),
+        kray: Math.round(detsa[detsa.length - 1]?.getBoundingClientRect().right ?? 0),
+        rabove: detsa.map((c) => Math.round(c.getBoundingClientRect().left)),
+        broy: detsa.length,
+      };
+    });
+    // редът на кеша е НАЙ-ФИНИЯТ (десет клетки по един трак) · върху неговите
+    // ръбове трябва да лежат ръбовете на всички останали
+    const nayFin = opis.reduce((a, b) => (b.broy > a.broy ? b : a), opis[0]!);
+    return {
+      visochini: new Set(opis.map((l) => l.visochina)).size,
+      dupki: opis.filter((l) => l.do - l.kray > 1).length,
+      chuzhdiRabove: opis.reduce(
+        (a, l) => a + l.rabove.filter((x) => !nayFin.rabove.includes(x)).length,
+        0,
+      ),
+      kletki: opis.map((l) => l.broy).join(' · '),
+    };
+  });
+}
+
 export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
   const { stranitsa: p, broyach } = ctx;
   let razdel = '—';
@@ -59,10 +108,20 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
   razdel = '4а · трите реда';
   await p.goto(`${ADRES}#/smetki`);
   await p.waitForSelector(ZALEPENO);
+  // ОСЕМ, НЕ ЕДИНАЙСЕТ · негово, 13.09 (запис 203) т.3: „Тази секция да стане на
+  // ЕДИН ред." Трите кеш полета оттук повтаряха реда на кеша под себе си и
+  // слязоха; те бяха и причината колоните да не се подреждат (т.2).
   proveri(
-    'единайсетте полета с цифри · и БАЛАНСЪТ е първото (негово, 13.09 т.5)',
+    'осемте полета с цифри · и БАЛАНСЪТ е първото (негово, 13.09 т.5)',
     (await tekstoveNa(p, `${ZALEPENO} [data-poleta] [data-pole] .ime`)).join(' · '),
-    'Баланс · Приход · Разходи · Резултат · Кеш дадено · Кеш изтеглено · Кеш разлика · движения · несверени · ДДС остатък · находки НАП',
+    'Баланс · Приход · Разходи · Резултат · движения · несверени · ДДС остатък · находки НАП',
+  );
+  proveri(
+    'и нито едно кеш число не стои на два реда',
+    (await tekstoveNa(p, `${ZALEPENO} [data-poleta] [data-pole] .ime`)).filter((x) =>
+      x.startsWith('Кеш'),
+    ).length,
+    0,
   );
   // негово, 13.09 (запис 203), точка 1: „Реда на подтабовете в Сметки да се
   // качи на 2ро място." Първо КОЛКО, после КЪДЕ, после КАКВО ВЪВЕЖДАМ, накрая
@@ -98,6 +157,17 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
     await p.$$eval('[data-dobavi-dvizhenie]', (es) => es.length),
     0,
   );
+
+  // ══ ЧЕТИРИТЕ ЛЕНТИ СА ЕДНА МРЕЖА · негово, 13.09 (запис 203) т.2 ═══
+  const lentite = await izmeriLentite(p);
+  proveri(
+    'клетките по лента · осем полета · пет подтаба · десет на кеша · шест действия',
+    lentite.kletki,
+    '8 · 5 · 10 · 6',
+  );
+  proveri('ЕДНА височина за четирите · колко различни има', lentite.visochini, 1);
+  proveri('БЕЗ ПРАЗНИ ПРОСТРАНСТВА · колко ленти не стигат десния си край', lentite.dupki, 0);
+  proveri('СИМЕТРИЯ · колко ръба падат ИЗВЪН подложката на кеш-реда', lentite.chuzhdiRabove, 0);
   proveri(
     'двете му ленти стоят една под друга',
     (await tekstoveNa(p, '[data-blok="prihod"] .lenta, [data-blok="razhod"] .lenta')).join(' · '),
@@ -210,18 +280,17 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
   // се смята от секцията, и чакане по него би минало, преди Портата да е върнала.
   await p.waitForFunction(
     (evro) =>
-      document.querySelector('[data-tsifra="kesh-izvlechenie"]')?.textContent?.trim() === evro,
+      document.querySelector('[data-tsifra="trezor-iztegleno"]')?.textContent?.trim() === evro,
     EVRO_1500,
   );
-  proveri('Кеш дадено', await tekstNa(p, '[data-tsifra="kesh-dadeno"]'), EVRO_1500);
-  proveri('Кеш изтеглено', await tekstNa(p, '[data-tsifra="kesh-izvlechenie"]'), EVRO_1500);
-  // „Кеш вкарано" стана огледало на „Кеш дадено" и си отиде · на мястото му
-  // стои РАЗЛИКАТА дадено − изтеглено (негово, 13.09 · запис 205)
+  // ЧИСЛАТА ЖИВЕЯТ НА ЕДИН РЕД · негово, 13.09 (запис 203) т.3. Дотук ги имаше и
+  // горе, и тук; горните слязоха, и проверката гледа там, където те са.
   proveri(
-    'Кеш разлика · дадено − изтеглено · нулата значи, че сверката затваря',
-    await tekstNa(p, '[data-tsifra="kesh-razlika"]'),
-    EVRO_0,
+    'дадени Заплати Кеш · сметнати от секцията, не писани',
+    await tekstNa(p, '[data-tsifra="kesh-zaplati"]'),
+    EVRO_1500,
   );
+  proveri('Изтеглено · Карта', await tekstNa(p, '[data-tsifra="trezor-iztegleno"]'), EVRO_1500);
   proveri('полетата на двете форми имат име', await poletaBezIme(p), 0);
   const sverki = await tekstNa(p, '[data-kesh-sverki]');
   // ЕДНА сверка · другата стана тъждество, когато дадените пари почнаха да се
