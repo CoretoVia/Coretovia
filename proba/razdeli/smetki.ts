@@ -758,4 +758,74 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
     `${await tekstNa(p, '[data-sverka="filtar-prihod"]')} · ${await tekstNa(p, '[data-sbor="prihod"]')}`,
     `${vsichkiPrihod} · ${EVRO_1200}`,
   );
+
+  // ══ 4к · ЕДИН РЕД НА ЕДНО НЕЩО · негово, 13.09 (запис 213) т.2 ══════════
+  //
+  // „Редовете с една и съща Задача или ред от сметки НЕ СЕ ПРЕНАСЯ В НОВ РЕД
+  // всеки месец, а това става в самия календар където всеки ред минава през
+  // всеки такт, ако етапа е по голям събира всички за периода от реда в
+  // календара и го покзава в колона бюджет на всеки ред."
+  //
+  // Разделът стои НАКРАЯ нарочно: той добавя втори запис на едно и също нещо, а
+  // всяка проверка след него, която брои движения, би отчела едно в повече.
+  razdel = '4к · един ред на едно нещо';
+  await noviyatRedSPari(p);
+  await p.waitForSelector(ch);
+  await p.selectOption(`${ch} select[data-kolona="kam"]`, { index: 1 });
+  await p.selectOption(`${ch} select[data-kolona="sektsiya"]`, '1');
+  await p.selectOption(`${ch} select[data-kolona="funktsiya"]`, '3');
+  await p.fill(`${ch} input[data-kolona="mesets"]`, MESETS);
+  await p.fill(`${ch} input[data-kolona="suma"]`, '1200');
+  await p.press(`${ch} input[data-kolona="suma"]`, 'Enter');
+  await p.waitForFunction(
+    () =>
+      document.querySelectorAll('[data-reshetka="prihod"] tbody tr.red[data-v-grupata]').length ===
+      1,
+  );
+  proveri(
+    'ДВА записа · ЕДИН ред на екрана',
+    `${await p.$$eval('[data-reshetka="prihod"] tbody tr.red', (es) => es.length)} · ${await p.$eval(
+      '[data-reshetka="prihod"] tbody tr.red[data-v-grupata]',
+      (e) => e.getAttribute('data-v-grupata'),
+    )}`,
+    '1 · 2',
+  );
+  proveri(
+    'СБОРЪТ за периода стои в колоната · не сумата на едното плащане',
+    await p.$eval('[data-reshetka="prihod"] tbody tr.red td[data-kolona="suma"]', (e) =>
+      (e as HTMLElement).innerText.trim(),
+    ),
+    '2 400,00 €',
+  );
+  proveri(
+    'и НЕ СЕ РЕДАКТИРА · сборът на две плащания не е число за пренаписване',
+    await p.$eval('[data-reshetka="prihod"] tbody tr.red td[data-kolona="suma"]', (e) =>
+      e.hasAttribute('data-redakt'),
+    ),
+    false,
+  );
+  proveri(
+    'клетката на календара носи ДВЕТЕ · и казва, че са две',
+    `${await p.$eval(
+      '[data-reshetka="prihod"] tbody tr.red td.takt.dvizhenie',
+      // само първият текстов възел · броячът е свой елемент до числото
+      (e) => e.firstChild?.textContent?.trim() ?? '',
+    )} · ${await p.$eval(
+      '[data-reshetka="prihod"] tbody tr.red td.takt.dvizhenie .pokrivashti',
+      (e) => e.textContent,
+    )}`,
+    '2 400,00 € · 2',
+  );
+  proveri(
+    'но СЕ ПИПА · белегът за редакция сочи едно от двете',
+    await p.$$eval('[data-reshetka="prihod"] tbody tr.red td.takt[data-redakt]', (es) => es.length),
+    1,
+  );
+  proveri(
+    'и броячът КАЗВА, че нищо не е изчезнало',
+    (await tekstNa(p, '[data-sverka="filtar-prihod"]')).includes(
+      '1 повторения се четат в календара',
+    ),
+    true,
+  );
 }

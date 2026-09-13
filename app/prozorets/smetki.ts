@@ -35,6 +35,8 @@ import { napTablitsite, type RedNaNap } from '../../src/smetach/nap-tablitsite.j
 import { trezorat } from '../../src/smetach/trezor.js';
 import { prodazhbite } from '../../src/smetach/prodazhbi.js';
 import { balansat } from '../../src/smetach/balans.js';
+import { grupite, spesteniRedove } from '../../src/smetach/grupi.js';
+import { tekstNaKletka } from '../../src/smetach/kletki.js';
 import { zadachiteSByudzhet } from '../../src/smetach/zadachi-v-smetki.js';
 import { dumiNaKletka, imeNaVrazkata } from '../../src/smetach/kletki.js';
 import { eFiltarPrazen, stoynostiteNaKolonata } from '../../src/smetach/filtar.js';
@@ -207,8 +209,19 @@ interface RedNaEkrana {
   readonly mesets: string;
   /** денят, ако е попълнен · инак празно и редът пада на първия от месеца */
   readonly data: string;
+  /** СБОРЪТ на групата за периода · негово, запис 213 т.2 */
   readonly suma: number;
   readonly ime: string;
+  /**
+   * ПОВТОРЕНИЯТА · всички записи на едно и също нещо, подредени по ден.
+   *
+   * Негово, 13.09 (запис 213) т.2: „Редовете с една и съща Задача или ред от
+   * сметки не се пренася в нов ред всеки месец, а това става в самия календар."
+   * Един ред на екрана, толкова числа в календара, колкото пъти е плащано.
+   */
+  readonly povtoreniya: readonly RedVSektsiya[];
+  /** колко записа стоят зад този ред · 1 значи, че групата е от един */
+  readonly vGrupata: number;
 }
 
 /**
@@ -586,6 +599,22 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
     const tds = KOLONI.map((klyuch) => {
       const kol = kolonaNa(t, klyuch);
       if (kol === undefined) return h`<td class="kletka prazna"></td>`;
+      /**
+       * СУМАТА НА ГРУПА е СБОР и НЕ СЕ РЕДАКТИРА.
+       *
+       * Негово, 13.09 (запис 213) т.2: сборът за периода „го покзава в колона
+       * бюджет на всеки ред". Сборът на дванайсет плащания не е число, което
+       * може да се пренапише — пипа се всяко поотделно, а те живеят в календара,
+       * всяко в своята колона, всяко със своя белег за редакция.
+       *
+       * Затова тук клетката е затворена и казва от колко идва. Групата от ЕДИН
+       * няма такъв проблем: там сборът Е самото число и се пише както винаги.
+       */
+      if (klyuch === 'suma' && r.vGrupata > 1) {
+        return h`<td class="kletka evro zatvoreno" data-kolona="suma"${podskazkaSDumi(
+          `сборът на ${String(r.vGrupata)} записа за показания период · всеки от тях се пипа в своята колона на календара`,
+        )} translate="no">${pishi(r.suma)}</td>`;
+      }
       if (klyuch === 'kam') {
         const kl = red.kletki['kam'] ?? null;
         const dumi = kl !== null && 'tekst' in kl ? imeNaVrazkata(o, kol, kl.tekst) : '';
@@ -600,27 +629,87 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
       }
       return kletkaHTML(o, TABLITSA, kol, red, samoGledane);
     });
-    return h`<tr class="red" data-id="${r.id}" data-tablitsa="${TABLITSA}" data-seq="${red.seq}">${tds}${
-      sTakt
-        ? taktNaReda(r.data === '' ? denNaMeseca(r.mesets) : r.data, r.suma, '', r.id, samoGledane)
-        : prazniTaktove
-    }</tr>`;
+    return h`<tr class="red" data-id="${r.id}" data-tablitsa="${TABLITSA}" data-seq="${red.seq}"${
+      r.vGrupata <= 1 ? '' : h` data-v-grupata="${String(r.vGrupata)}"`
+    }>${tds}${sTakt ? taktoveNaGrupata(r, samoGledane) : prazniTaktove}</tr>`;
   };
+
+  /**
+   * КЛЕТКИТЕ НА ТАКТА ЗА ЕДНА ГРУПА · всяко повторение пада в своята колона.
+   *
+   * Негово, 13.09 (запис 213) т.2: „това става в самия календар където всеки ред
+   * минава през всеки такт, ако етапа е по голям СЪБИРА ВСИЧКИ ЗА ПЕРИОДА."
+   *
+   * Затова тук не се вика `taktNaReda` веднъж, а се събира по колона: при такт
+   * „ден" всяко плащане е в своя ден, при такт „година" дванайсетте се сливат в
+   * едно число. Белегът за редакция сочи ОНОВА повторение, което пада в клетката
+   * — тъй че групираният ред пак се редактира, само че там, където е числото.
+   */
+  const taktoveNaGrupata = (r: RedNaEkrana, samoGledane: boolean): readonly Zapechatan[] => {
+    const sborove = new Array<number>(koloniteNaGanta.length).fill(0);
+    const koy = new Array<string>(koloniteNaGanta.length).fill('');
+    const broyVKletkata = new Array<number>(koloniteNaGanta.length).fill(0);
+    for (const p of r.povtoreniya) {
+      const j = kolonataNa(p.data === '' ? denNaMeseca(p.mesets) : p.data);
+      if (j < 0) continue;
+      sborove[j] = (sborove[j] ?? 0) + p.suma_st;
+      if (koy[j] === '') koy[j] = p.id;
+      broyVKletkata[j] = (broyVKletkata[j] ?? 0) + 1;
+    }
+    return koloniteNaGanta.map((kol, j) => {
+      const sbor = sborove[j] ?? 0;
+      const id = koy[j] ?? '';
+      const broy = broyVKletkata[j] ?? 0;
+      if (id === '') return h`<td class="takt${kol.dnes ? ' dnes' : ''}"></td>`;
+      // редакцията сочи ЕДНО повторение · при повече от едно в клетката тя води
+      // до най-ранното, а числото казва, че са няколко
+      const redakt = samoGledane
+        ? ''
+        : h` data-redakt="${TABLITSA}·${id}·mesets" data-kolona="mesets" tabindex="0"`;
+      return h`<td class="takt evro dvizhenie${kol.dnes ? ' dnes' : ''}"${redakt} translate="no">${pishi(
+        sbor,
+      )}${broy <= 1 ? '' : h`<span class="pokrivashti">${String(broy)}</span>`}</td>`;
+    });
+  };
+
+  /**
+   * ГРУПИТЕ НА ЕДНА СЕКЦИЯ · кое е „едно и също нещо".
+   *
+   * Родител · име · функция. Два реда с едно име, но различен Имот са различни
+   * неща и не се събират — инак токът на две сгради би станал един ред и никой
+   * не би разбрал чий е.
+   */
+  const grupiteNa = (sek: Sektsiya) =>
+    grupite(sek.redove, (r) =>
+      [
+        tekstNaKletka(o, TABLITSA, r.i, 'kam'),
+        tekstNaKletka(o, TABLITSA, r.i, 'ime'),
+        tekstNaKletka(o, TABLITSA, r.i, 'funktsiya'),
+      ].join('|'),
+    );
+
+  /** Колко реда е спестило групирането в тези секции · за брояча отдолу. */
+  const spestenite = (sektsii: readonly Sektsiya[]): number =>
+    sektsii.reduce((a, sek) => a + spesteniRedove(grupiteNa(sek)), 0);
 
   const sektsiyaHTML = (sek: Sektsiya, samoGledane = false, sTakt = false): Zapechatan =>
     h`<tr class="grupata sektsiya" data-sektsiya="${sek.strana}·${sek.nomer}">
         <td colspan="${KOLONI.length - 1}" translate="no">${sek.tekst}</td>
         <td class="evro" data-sbor-sektsiya="${sek.strana}·${sek.nomer}"${izvedena('sektsiya')} translate="no">${pishi(sek.sbor)}</td>
         ${sTakt ? sboroveNaTaktovete([sek]) : prazniTaktove}
-      </tr>${sek.redove.map((r) =>
+      </tr>${grupiteNa(sek).map((g) =>
         redHTML(
           {
-            id: r.id,
-            i: r.i,
-            mesets: r.mesets,
-            data: r.data,
-            suma: r.suma_st,
+            id: g.parviyat.id,
+            i: g.parviyat.i,
+            mesets: g.parviyat.mesets,
+            data: g.parviyat.data,
+            // СБОРЪТ ЗА ПЕРИОДА стои в колоната със сумата · негово, запис 213 т.2:
+            // „го покзава в колона бюджет на всеки ред"
+            suma: g.sbor_st,
             ime: sek.tekst,
+            povtoreniya: g.redove,
+            vGrupata: g.redove.length,
           },
           samoGledane,
           sTakt,
@@ -839,6 +928,14 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
         izvanKalendara(sektsii) === 0
           ? ''
           : ` · извън колоните на календара ${String(izvanKalendara(sektsii))}`
+      }${
+        // КОЛКО РЕДА СА СЕ СЛЕЛИ · негово, 13.09 (запис 213) т.2. Числото е
+        // разликата между ПОДРЕДБА и СКРИВАНЕ: човек вижда, че нищо не е
+        // изчезнало — записите са си там, просто се четат като по-малко редове
+        // (правило 12).
+        spestenite(sektsii) === 0
+          ? ''
+          : ` · ${String(spestenite(sektsii))} повторения се четат в календара`
       }</p>
     </section>`;
 
