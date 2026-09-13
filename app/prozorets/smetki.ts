@@ -1024,7 +1024,7 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
    */
   const keshaZaGledane = h`${zatvorenaKletka('kesh-zaplati', 'дадени Заплати Кеш', kesh.zaplati, 'сборът на редовете в секция Заплати Кеш за месеца · смята се от подтабовете, не се пише')}${zatvorenaKletka('kesh-fakturi', 'дадени Фактури Кеш', kesh.fakturi, 'сборът на редовете в секция Фактури Кеш за месеца · смята се от подтабовете, не се пише')}`;
   /** ТРЕЗОРЪТ · трите му числа · негово, 13.09 (запис 203), точка 4 */
-  const trezoraHTML = h`${zatvorenaKletka('trezor', 'Трезор', trezor.vnoski_st, trezor.formulaNaVnoskite)}${zatvorenaKletka('trezor-iztegleno', 'Изтеглено общо', trezor.iztegleno_st, trezor.formulaNaIzteglenoto)}${zatvorenaKletka('trezor-obshto', 'Общ Трезор', trezor.obshto_st, trezor.formulaNaObshtoto)}`;
+  const trezoraHTML = h`${zatvorenaKletka('trezor', 'Трезор', trezor.vnoski_st, trezor.formulaNaVnoskite)}${zatvorenaKletka('trezor-iztegleno', 'Изтеглено · Карта', trezor.iztegleno_st, trezor.formulaNaIzteglenoto)}${zatvorenaKletka('trezor-obshto', 'Общ Трезор', trezor.obshto_st, trezor.formulaNaObshtoto)}`;
 
   sloji(
     k.tyalo,
