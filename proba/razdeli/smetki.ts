@@ -63,11 +63,44 @@ async function noviyatRedSPari(p: Page): Promise<void> {
  * затвори дупката, добавяше цял празен ред отдолу. Оттогава тази лента се съди
  * само с `getBoundingClientRect`.
  *
+ * И НА НЯКОЛКО ШИРИНИ · втора цена, платена на 13.09. Мерех на 1920 · 1440 ·
+ * 1200 и всичко беше по 43px; проходът върви на 1280 (подразбирането на
+ * Playwright) и също минаваше. В CI обаче падна с „чакано 1, видяно 2" — на
+ * ubuntu шрифтовете са други и редът на кеша ставаше с ЕДИН пиксел по-висок,
+ * защото полетата за въвеждане носят своя височина. Проверка на една ширина
+ * пропуска точно това. Оттук се мери на три, и най-тясната е под екрана му.
+ *
  * `display: contents` не е клетка · обвивката на откритите бутони е прозрачна за
  * мрежата, тъй че децата ѝ се броят на нейно място.
  */
+/** Ширините, на които се съди · 1280 е подразбирането на прохода и на CI. */
+const SHIRINI = [1440, 1280, 960] as const;
+
 async function izmeriLentite(p: Page): Promise<{
   visochini: number;
+  dupki: number;
+  chuzhdiRabove: number;
+  kletki: string;
+}> {
+  const vsichki: { visochini: number[]; dupki: number; chuzhdiRabove: number; kletki: string }[] =
+    [];
+  for (const shirina of SHIRINI) {
+    await p.setViewportSize({ width: shirina, height: 900 });
+    vsichki.push(await edinaSnimka(p));
+  }
+  // връщаме прозореца на ширината, с която тръгна разделът
+  await p.setViewportSize({ width: 1280, height: 720 });
+  return {
+    // ЕДНА височина през ВСИЧКИ ширини · не една на всяка поотделно
+    visochini: new Set(vsichki.flatMap((x) => x.visochini)).size,
+    dupki: vsichki.reduce((a, x) => a + x.dupki, 0),
+    chuzhdiRabove: vsichki.reduce((a, x) => a + x.chuzhdiRabove, 0),
+    kletki: vsichki[0]?.kletki ?? '',
+  };
+}
+
+async function edinaSnimka(p: Page): Promise<{
+  visochini: number[];
   dupki: number;
   chuzhdiRabove: number;
   kletki: string;
@@ -90,7 +123,7 @@ async function izmeriLentite(p: Page): Promise<{
     // ръбове трябва да лежат ръбовете на всички останали
     const nayFin = opis.reduce((a, b) => (b.broy > a.broy ? b : a), opis[0]!);
     return {
-      visochini: new Set(opis.map((l) => l.visochina)).size,
+      visochini: opis.map((l) => l.visochina),
       dupki: opis.filter((l) => l.do - l.kray > 1).length,
       chuzhdiRabove: opis.reduce(
         (a, l) => a + l.rabove.filter((x) => !nayFin.rabove.includes(x)).length,
@@ -168,7 +201,11 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
     lentite.kletki,
     '8 · 5 · 10 · 6',
   );
-  proveri('ЕДНА височина за четирите · колко различни има', lentite.visochini, 1);
+  proveri(
+    'ЕДНА височина за четирите, на ТРИ ширини · колко различни има ОБЩО',
+    lentite.visochini,
+    1,
+  );
   proveri('БЕЗ ПРАЗНИ ПРОСТРАНСТВА · колко ленти не стигат десния си край', lentite.dupki, 0);
   proveri('СИМЕТРИЯ · колко ръба падат ИЗВЪН подложката на кеш-реда', lentite.chuzhdiRabove, 0);
   proveri(

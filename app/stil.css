@@ -1472,7 +1472,12 @@ body.vlacha-shirina {
 .zalepeno.lenti {
   /* ПОДЛОЖКАТА · десет трака, върху които лягат и четирите ленти */
   --trakove: 10;
-  --visochina-na-lentata: 2.7rem;
+  /* ЕДИН РЕД НА КЛЕТКА · негово, 13.09 (запис 213) т.1: „Редовете да се събира
+     всичко от секцията на един ред и така ще прибираш фиксираната част без да
+     се заема много от видимия прозорец." Името и числото стоят едно до друго,
+     не едно под друго — и четирите ленти паднаха от 43 на 28 пиксела, тоест
+     фиксираната част горе освободи над 60 пиксела от екрана му. */
+  --visochina-na-lentata: 1.75rem;
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -1496,6 +1501,11 @@ body.vlacha-shirina {
      `auto` — е важна: с `auto` дълга дума в клетка раздува трака си и цялата
      подложка се изкривява, тоест симетрията пак пада, само по-тихо. */
   grid-template-columns: repeat(var(--trakove), minmax(0, 1fr));
+  /* И САМАТА ЛЕНТА е с ТОЧНА височина · клетките ѝ вече са, но обвивката на
+     менюто (<details>) добавяше един пиксел върху лентата с действията и
+     четирите пак не бяха равни. Без `overflow: hidden` тук: менюто се отваря
+     НАД съдържанието и трябва да излиза извън лентата. */
+  height: var(--visochina-na-lentata);
   align-items: stretch;
   gap: 1px;
   margin: 0;
@@ -1546,17 +1556,29 @@ body.vlacha-shirina {
   display: contents;
 }
 
-/* ЕДНА КЛЕТКА · какъвто и да е обитателят ѝ */
+/* ЕДНА КЛЕТКА · какъвто и да е обитателят ѝ · и ТОЧНА височина, не минимална.
+
+   ЦЕНАТА, ПЛАТЕНА НА 13.09: с `min-height` четирите ленти бяха равни по
+   СЪВПАДЕНИЕ, не по конструкция. Измерено: при 1920 · 1440 · 1200 всички бяха
+   43px, но при 1024 и 900 редът на кеша ставаше 44 — полетата за въвеждане
+   носят своя височина. В CI (ubuntu, други шрифтове) същият пиксел се появи и
+   на 1280 и вали проверката „ЕДНА височина за четирите" с „чакано 1, видяно 2".
+
+   `height` вместо `min-height` прави равенството НЕВЪЗМОЖНО ЗА НАРУШАВАНЕ от
+   шрифт или от съдържание. Проверката в прохода вече не пита дали случайно са
+   се получили равни — тя пази, че правилото не е махнато. */
 .zalepeno.lenti .pole-s-tsifra,
 .zalepeno.lenti .podtab,
 .ekran .zalepeno.lenti .tema > summary,
 .zalepeno.lenti .buton-grupa,
 .ekran .zalepeno.lenti .otkriti > button {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0;
-  min-height: var(--visochina-na-lentata);
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem;
+  height: var(--visochina-na-lentata);
+  overflow: hidden;
   min-width: 0;
   max-width: none;
   margin: 0;
@@ -1570,17 +1592,31 @@ body.vlacha-shirina {
 /* РЕДОВАТА ВИСОЧИНА се свива, кутията НЕ се вдига · инак `min-height` става
    пожелание и четирите ленти излизат с четири различни височини */
 .zalepeno.lenti .tsifra {
+  flex: 0 0 auto;
   overflow: hidden;
   line-height: 1.15;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 600;
 }
 
+/* ИМЕТО Е ПЪРВО, ЧИСЛОТО ВТОРО · етикет отляво, число отдясно, като в таблица.
+
+   В HTML числото стои преди името (така се чете от Огледалото), а `order`
+   разменя само ВИДА. Смяната в шаблона би искала пипане на десетина места, а
+   редът на четене е свойство на екрана, не на данните.
+
+   И се реже ИМЕТО, не числото: числото е отговорът, името е въпросът, а
+   въпросът се познава и наполовина. */
 .zalepeno.lenti .ime {
+  order: -1;
+  flex: 1 1 auto;
   overflow: hidden;
   line-height: 1.1;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--sivo);
+  font-size: 0.75rem;
 }
 
 /* ЦВЕТЪТ КАЗВА КАКВО Е ЧИСЛОТО · приходът расте, разходът яде (правило 16) */
