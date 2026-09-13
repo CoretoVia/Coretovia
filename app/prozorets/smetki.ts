@@ -35,6 +35,8 @@ import { napTablitsite, type RedNaNap } from '../../src/smetach/nap-tablitsite.j
 import { trezorat } from '../../src/smetach/trezor.js';
 import { prodazhbite } from '../../src/smetach/prodazhbi.js';
 import { balansat } from '../../src/smetach/balans.js';
+import { grupite, spesteniRedove } from '../../src/smetach/grupi.js';
+import { tekstNaKletka } from '../../src/smetach/kletki.js';
 import { zadachiteSByudzhet } from '../../src/smetach/zadachi-v-smetki.js';
 import { dumiNaKletka, imeNaVrazkata } from '../../src/smetach/kletki.js';
 import { eFiltarPrazen, stoynostiteNaKolonata } from '../../src/smetach/filtar.js';
@@ -69,7 +71,7 @@ import {
 import { pishi, pishiVPole, sabiri, type Tsentove, tsentove } from '../../src/yadro/pari.js';
 import type { KonteksNaEkrana } from '../kontekst.js';
 import { otvoriChernova } from '../reshetka/chernova.js';
-import { podskazka, podskazkaSDumi } from '../reshetka/podskazka.js';
+import { obyasnenie, podskazka, podskazkaSDumi } from '../reshetka/podskazka.js';
 import { h, sloji, type Zapechatan } from '../reshetka/shablon.js';
 import { chetiEkranno, zapomniEkranno } from '../reshetka/pamet-ekran.js';
 import {
@@ -207,8 +209,19 @@ interface RedNaEkrana {
   readonly mesets: string;
   /** денят, ако е попълнен · инак празно и редът пада на първия от месеца */
   readonly data: string;
+  /** СБОРЪТ на групата за периода · негово, запис 213 т.2 */
   readonly suma: number;
   readonly ime: string;
+  /**
+   * ПОВТОРЕНИЯТА · всички записи на едно и също нещо, подредени по ден.
+   *
+   * Негово, 13.09 (запис 213) т.2: „Редовете с една и съща Задача или ред от
+   * сметки не се пренася в нов ред всеки месец, а това става в самия календар."
+   * Един ред на екрана, толкова числа в календара, колкото пъти е плащано.
+   */
+  readonly povtoreniya: readonly RedVSektsiya[];
+  /** колко записа стоят зад този ред · 1 значи, че групата е от един */
+  readonly vGrupata: number;
 }
 
 /**
@@ -225,7 +238,7 @@ interface RedNaEkrana {
 function blokatNaPokazatelite(spisak: readonly Pokazatel[]): Zapechatan {
   return h`<section class="sektsiya" data-sektsiya="pokazateli">
       <h2 class="lenta">Данни за коефициентите</h2>
-      <p class="pod-tablitsata">Събрано от Приход и Разход за показания период · всяко число носи формулата си при задържане.</p>
+      ${obyasnenie('Събрано от Приход и Разход за показания период · всяко число носи формулата си при задържане.')}
       <div class="poleta-s-tsifri" data-pokazateli>${spisak.map(
         (x) =>
           h`<div class="pole-s-tsifra" data-pokazatel="${x.klyuch}"${podskazka(
@@ -289,6 +302,23 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
   const s = smetkite(o, kogato, vObhvata);
   /** ВСИЧКИТЕ пари · оттук идва натрупаният Баланс, който не се мени с погледа */
   const vsichkiteSmetki = smetkite(o, kogato);
+  /**
+   * ЗАДАЧИТЕ С БЮДЖЕТ · четат се ТУК, след `vObhvata`, защото ОБЩ РАЗХОД вече ги
+   * иска И защото се подчиняват на СЪЩИЯ период като парите.
+   *
+   * Негово, 13.09 (запис 205): „Да има и според вкарания период, а ако е сега
+   * периода да е за периода на такта. Това така да влиае на **останалите
+   * изчисления** и да се съобразява ИЗЦЯЛО в сметките с календара."
+   *
+   * Дотук задачите стояха по-надолу, до рисувача си, и никакъв период не ги
+   * пипаше. Щом бюджетът им влиза в сбора, той трябва да се свива с него —
+   * инак периодът би свивал едната половина на разхода, а другата не.
+   */
+  const vsichkiZadachi = zadachiteSByudzhet(o);
+  const zadachite = {
+    ...vsichkiZadachi,
+    redove: vsichkiZadachi.redove.filter((z) => vObhvata(z.data.slice(0, 7))),
+  };
   const kesh = keshatNaMeseca(o, mesets, kogato);
   const v = vkarvaneto(o, kogato, vObhvata);
   const podtab = tekushtPodtab(PAMET.podtab, PODTABOVE);
@@ -306,6 +336,7 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
    * задачите с бюджет си отива оттук, както си отиват редовете на Сметки там.
    */
   const skritiZadachi = !parite();
+
   /**
    * ТРЕЗОРЪТ · Заданието го иска (M06-10) и той пита за него (запис 195 т.5).
    * Смята се от кеша на месеца; нищо не се въвежда (M06-P3).
@@ -377,9 +408,28 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
   // правило 3 · сборовете ПРЕД ЧОВЕКА минават през преградата за цели центове (ДЛ-Н4 · ход 9)
   const ddsSbor = (strana: Strana): Tsentove =>
     sabiri(...ddsNa(strana).map((m) => tsentove(m.suma)));
+  /**
+   * БЮДЖЕТИТЕ НА ЗАДАЧИТЕ ВЛИЗАТ В ОБЩ РАЗХОД · и излизат с бутона.
+   *
+   * Негово, 11.09 (запис 163), ДОСЛОВНО: „Скриването на Задачите с Бюджет(само те
+   * се пренасят от Управление в Сметки, това е важно) от Управление в Сметки ще
+   * ги ИЗКЛЮЧВА ОТ ИЗЧИСЛЕНИЯТА."
+   *
+   * ДОТУК ТЕ НЕ СА БИЛИ ВКЛЮЧЕНИ ИЗОБЩО. Задачите с бюджет се рисуваха като
+   * редове под Разходи и си имаха свой междинен сбор, но ОБЩ РАЗХОД ги
+   * подминаваше — тоест бутонът „изключваше" нещо, което никога не е било вътре,
+   * и числото не мърдаше. Тихо разминаване: таблицата показваше едно, сборът под
+   * нея друго.
+   *
+   * Бюджетът е планиран РАЗХОД и влиза с минус (правило 16). Правило 3: сборът
+   * пред човека минава през преградата за цели центове.
+   */
+  const sborNaZadachite = skritiZadachi
+    ? tsentove(0)
+    : sabiri(...zadachite.redove.map((z) => tsentove(-z.byudzhet_st)));
   // сборът е върху ВИДИМИТЕ · негово, запис 163: скритото в Сметки не се смята
   const sborPrihod = sabiri(tsentove(fPrihod.sbor), ddsSbor('prihod'));
-  const sborRazhod = sabiri(tsentove(fRazhod.sbor), ddsSbor('razhod'));
+  const sborRazhod = sabiri(tsentove(fRazhod.sbor), ddsSbor('razhod'), sborNaZadachite);
   const nap = nahodkiteNaNap(o, `${mesets}-01`, kogato);
   const nesvereni = [...s.prihod, ...s.razhod]
     .flatMap((x) => x.redove)
@@ -416,28 +466,13 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
       dumi: pishi(sabiri(sborPrihod, sborRazhod)),
       kak: izvedena('rezultat'),
     },
-    {
-      klyuch: 'kesh-dadeno',
-      ime: 'Кеш дадено',
-      dumi: pishi(kesh.dadeno),
-      kak: izvedena('kesh-dadeno'),
-    },
-    {
-      klyuch: 'kesh-izvlechenie',
-      ime: 'Кеш изтеглено',
-      dumi: pishi(kesh.izvlechenie),
-      kak: izvedena('kesh-izvlechenie'),
-    },
-    // „Кеш вкарано" си отиде на 13.09: откакто ДАДЕНОТО се смята от същите
-    // редове, двете клетки показваха едно и също число, едната без знака.
-    // Освободеното място отива на онова, което наистина липсваше — РАЗЛИКАТА
-    // между даденото и изтегленото, тоест колко още стои между банката и ръката.
-    {
-      klyuch: 'kesh-razlika',
-      ime: 'Кеш разлика',
-      dumi: pishi(kesh.dadeno - kesh.izvlechenie),
-      kak: izvedena('kesh-razlika'),
-    },
+    // КЕШЪТ СИ ОТИДЕ ОТТУК · негово, 13.09 (запис 203), точка 3: „**Тази секция
+    // да стане на ЕДИН ред**." А беше на два: „Кеш дадено" повтаряше сбора на
+    // Заплати Кеш и Фактури Кеш, „Кеш изтеглено" повтаряше въведеното по
+    // извлечение, а „Кеш разлика" беше буквално сверката, изписана отдясно на
+    // самия кеш ред. Три клетки, които казваха онова, което съседният ред вече
+    // казва — и точно те правеха първата лента с единайсет клетки срещу десетте
+    // на кеша, тоест те бяха причината колоните да не се подреждат (точка 2).
     {
       klyuch: 'dvizheniya',
       ime: 'движения',
@@ -489,7 +524,6 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
    * както е и в Управление (ход 88), и както е в самата му Книга.
    */
   /** задачите с бюджет · само те влизат в Сметки (негово, запис 163) */
-  const zadachite = zadachiteSByudzhet(o);
 
   /** В коя колона на такта пада един ден · -1, когато е извън обхвата. */
   const kolonataNa = (den: string): number =>
@@ -565,6 +599,22 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
     const tds = KOLONI.map((klyuch) => {
       const kol = kolonaNa(t, klyuch);
       if (kol === undefined) return h`<td class="kletka prazna"></td>`;
+      /**
+       * СУМАТА НА ГРУПА е СБОР и НЕ СЕ РЕДАКТИРА.
+       *
+       * Негово, 13.09 (запис 213) т.2: сборът за периода „го покзава в колона
+       * бюджет на всеки ред". Сборът на дванайсет плащания не е число, което
+       * може да се пренапише — пипа се всяко поотделно, а те живеят в календара,
+       * всяко в своята колона, всяко със своя белег за редакция.
+       *
+       * Затова тук клетката е затворена и казва от колко идва. Групата от ЕДИН
+       * няма такъв проблем: там сборът Е самото число и се пише както винаги.
+       */
+      if (klyuch === 'suma' && r.vGrupata > 1) {
+        return h`<td class="kletka evro zatvoreno" data-kolona="suma"${podskazkaSDumi(
+          `сборът на ${String(r.vGrupata)} записа за показания период · всеки от тях се пипа в своята колона на календара`,
+        )} translate="no">${pishi(r.suma)}</td>`;
+      }
       if (klyuch === 'kam') {
         const kl = red.kletki['kam'] ?? null;
         const dumi = kl !== null && 'tekst' in kl ? imeNaVrazkata(o, kol, kl.tekst) : '';
@@ -579,27 +629,87 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
       }
       return kletkaHTML(o, TABLITSA, kol, red, samoGledane);
     });
-    return h`<tr class="red" data-id="${r.id}" data-tablitsa="${TABLITSA}" data-seq="${red.seq}">${tds}${
-      sTakt
-        ? taktNaReda(r.data === '' ? denNaMeseca(r.mesets) : r.data, r.suma, '', r.id, samoGledane)
-        : prazniTaktove
-    }</tr>`;
+    return h`<tr class="red" data-id="${r.id}" data-tablitsa="${TABLITSA}" data-seq="${red.seq}"${
+      r.vGrupata <= 1 ? '' : h` data-v-grupata="${String(r.vGrupata)}"`
+    }>${tds}${sTakt ? taktoveNaGrupata(r, samoGledane) : prazniTaktove}</tr>`;
   };
+
+  /**
+   * КЛЕТКИТЕ НА ТАКТА ЗА ЕДНА ГРУПА · всяко повторение пада в своята колона.
+   *
+   * Негово, 13.09 (запис 213) т.2: „това става в самия календар където всеки ред
+   * минава през всеки такт, ако етапа е по голям СЪБИРА ВСИЧКИ ЗА ПЕРИОДА."
+   *
+   * Затова тук не се вика `taktNaReda` веднъж, а се събира по колона: при такт
+   * „ден" всяко плащане е в своя ден, при такт „година" дванайсетте се сливат в
+   * едно число. Белегът за редакция сочи ОНОВА повторение, което пада в клетката
+   * — тъй че групираният ред пак се редактира, само че там, където е числото.
+   */
+  const taktoveNaGrupata = (r: RedNaEkrana, samoGledane: boolean): readonly Zapechatan[] => {
+    const sborove = new Array<number>(koloniteNaGanta.length).fill(0);
+    const koy = new Array<string>(koloniteNaGanta.length).fill('');
+    const broyVKletkata = new Array<number>(koloniteNaGanta.length).fill(0);
+    for (const p of r.povtoreniya) {
+      const j = kolonataNa(p.data === '' ? denNaMeseca(p.mesets) : p.data);
+      if (j < 0) continue;
+      sborove[j] = (sborove[j] ?? 0) + p.suma_st;
+      if (koy[j] === '') koy[j] = p.id;
+      broyVKletkata[j] = (broyVKletkata[j] ?? 0) + 1;
+    }
+    return koloniteNaGanta.map((kol, j) => {
+      const sbor = sborove[j] ?? 0;
+      const id = koy[j] ?? '';
+      const broy = broyVKletkata[j] ?? 0;
+      if (id === '') return h`<td class="takt${kol.dnes ? ' dnes' : ''}"></td>`;
+      // редакцията сочи ЕДНО повторение · при повече от едно в клетката тя води
+      // до най-ранното, а числото казва, че са няколко
+      const redakt = samoGledane
+        ? ''
+        : h` data-redakt="${TABLITSA}·${id}·mesets" data-kolona="mesets" tabindex="0"`;
+      return h`<td class="takt evro dvizhenie${kol.dnes ? ' dnes' : ''}"${redakt} translate="no">${pishi(
+        sbor,
+      )}${broy <= 1 ? '' : h`<span class="pokrivashti">${String(broy)}</span>`}</td>`;
+    });
+  };
+
+  /**
+   * ГРУПИТЕ НА ЕДНА СЕКЦИЯ · кое е „едно и също нещо".
+   *
+   * Родител · име · функция. Два реда с едно име, но различен Имот са различни
+   * неща и не се събират — инак токът на две сгради би станал един ред и никой
+   * не би разбрал чий е.
+   */
+  const grupiteNa = (sek: Sektsiya) =>
+    grupite(sek.redove, (r) =>
+      [
+        tekstNaKletka(o, TABLITSA, r.i, 'kam'),
+        tekstNaKletka(o, TABLITSA, r.i, 'ime'),
+        tekstNaKletka(o, TABLITSA, r.i, 'funktsiya'),
+      ].join('|'),
+    );
+
+  /** Колко реда е спестило групирането в тези секции · за брояча отдолу. */
+  const spestenite = (sektsii: readonly Sektsiya[]): number =>
+    sektsii.reduce((a, sek) => a + spesteniRedove(grupiteNa(sek)), 0);
 
   const sektsiyaHTML = (sek: Sektsiya, samoGledane = false, sTakt = false): Zapechatan =>
     h`<tr class="grupata sektsiya" data-sektsiya="${sek.strana}·${sek.nomer}">
         <td colspan="${KOLONI.length - 1}" translate="no">${sek.tekst}</td>
         <td class="evro" data-sbor-sektsiya="${sek.strana}·${sek.nomer}"${izvedena('sektsiya')} translate="no">${pishi(sek.sbor)}</td>
         ${sTakt ? sboroveNaTaktovete([sek]) : prazniTaktove}
-      </tr>${sek.redove.map((r) =>
+      </tr>${grupiteNa(sek).map((g) =>
         redHTML(
           {
-            id: r.id,
-            i: r.i,
-            mesets: r.mesets,
-            data: r.data,
-            suma: r.suma_st,
+            id: g.parviyat.id,
+            i: g.parviyat.i,
+            mesets: g.parviyat.mesets,
+            data: g.parviyat.data,
+            // СБОРЪТ ЗА ПЕРИОДА стои в колоната със сумата · негово, запис 213 т.2:
+            // „го покзава в колона бюджет на всеки ред"
+            suma: g.sbor_st,
             ime: sek.tekst,
+            povtoreniya: g.redove,
+            vGrupata: g.redove.length,
           },
           samoGledane,
           sTakt,
@@ -657,8 +767,9 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
    */
   const zadachiteHTML = (): Zapechatan => {
     if (skritiZadachi || zadachite.redove.length === 0) return h``;
-    // правило 3 · сборът ПРЕД ЧОВЕКА минава през преградата за цели центове
-    const sborNaZadachite = sabiri(...zadachite.redove.map((z) => tsentove(-z.byudzhet_st)));
+    // ЕДНО число, един дом (правило 14) · `sborNaZadachite` е сметнат горе, там
+    // където влиза и в ОБЩ РАЗХОД. Второ смятане тук би могло да се размине с
+    // първото при следваща промяна, и таблицата пак би казвала друго от сбора.
     return h`<tr class="grupata sektsiya" data-sektsiya="razhod·задачи">
         <td colspan="${KOLONI.length - 1}" translate="no">Задачи с бюджет</td>
         <td class="evro" data-sbor-zadachi translate="no">${pishi(sborNaZadachite)}</td>
@@ -817,6 +928,14 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
         izvanKalendara(sektsii) === 0
           ? ''
           : ` · извън колоните на календара ${String(izvanKalendara(sektsii))}`
+      }${
+        // КОЛКО РЕДА СА СЕ СЛЕЛИ · негово, 13.09 (запис 213) т.2. Числото е
+        // разликата между ПОДРЕДБА и СКРИВАНЕ: човек вижда, че нищо не е
+        // изчезнало — записите са си там, просто се четат като по-малко редове
+        // (правило 12).
+        spestenite(sektsii) === 0
+          ? ''
+          : ` · ${String(spestenite(sektsii))} повторения се четат в календара`
       }</p>
     </section>`;
 
@@ -1001,7 +1120,13 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
             : 'проверката не е пускана'
         }</span>
       </div>
-      <p class="pod-tablitsata" data-proverka-zabavyane>Обикновено има забавяне ОТ ЕДИН МЕСЕЦ, докато няма Извлечения от банка срещу вкараните Фактури Кеш, Фактури Карта, Заплати Кеш и Заплати Банка. Четенето на самите извлечения чака файл-мостра от него (ход 11.3) — дотогава тук се сверява само вкараното срещу сметките.</p>
+      ${obyasnenie(
+        'Обикновено има забавяне ОТ ЕДИН МЕСЕЦ, докато няма Извлечения от банка срещу ' +
+          'вкараните Фактури Кеш, Фактури Карта, Заплати Кеш и Заплати Банка. Четенето на ' +
+          'самите извлечения чака файл-мостра от него (ход 11.3) — дотогава тук се сверява ' +
+          'само вкараното срещу сметките.',
+        'proverka-zabavyane',
+      )}
       ${
         !proverkataEPusnata
           ? h`<p class="vest" data-proverka-chaka>натисни „Проверка", за да се появи таблицата на разминаванията</p>`
@@ -1039,7 +1164,7 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
    */
   const keshaZaGledane = h`${zatvorenaKletka('kesh-zaplati', 'дадени Заплати Кеш', kesh.zaplati, 'сборът на редовете в секция Заплати Кеш за месеца · смята се от подтабовете, не се пише')}${zatvorenaKletka('kesh-fakturi', 'дадени Фактури Кеш', kesh.fakturi, 'сборът на редовете в секция Фактури Кеш за месеца · смята се от подтабовете, не се пише')}`;
   /** ТРЕЗОРЪТ · трите му числа · негово, 13.09 (запис 203), точка 4 */
-  const trezoraHTML = h`${zatvorenaKletka('trezor', 'Трезор', trezor.vnoski_st, trezor.formulaNaVnoskite)}${zatvorenaKletka('trezor-iztegleno', 'Изтеглено общо', trezor.iztegleno_st, trezor.formulaNaIzteglenoto)}${zatvorenaKletka('trezor-obshto', 'Общ Трезор', trezor.obshto_st, trezor.formulaNaObshtoto)}`;
+  const trezoraHTML = h`${zatvorenaKletka('trezor', 'Трезор', trezor.vnoski_st, trezor.formulaNaVnoskite)}${zatvorenaKletka('trezor-iztegleno', 'Изтеглено · Карта', trezor.iztegleno_st, trezor.formulaNaIzteglenoto)}${zatvorenaKletka('trezor-obshto', 'Общ Трезор', trezor.obshto_st, trezor.formulaNaObshtoto)}`;
 
   sloji(
     k.tyalo,
@@ -1112,7 +1237,7 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
         )}</tr></thead>
         <tbody class="tablitsa"><tr class="prazen-red"><td colspan="${String(vsichkiKoloni.length)}">Тук се отваря черновата. Натисни „Добави ред с пари" горе и редът се пише в тази таблица; записаният ред застава в секцията си долу.</td></tr></tbody>
       </table>
-      <p class="pod-tablitsata">Знакът решава страната: приходът е +, разходът е − (правило 16).</p>
+      ${obyasnenie('Знакът решава страната: приходът е +, разходът е − (правило 16).')}
     </section>
     <section class="smetki-tyalo" data-smetki>
       <div class="smetki-blokove">
@@ -1122,7 +1247,7 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
         ${razlikiteHTML()}
         <section class="tablitsa-blok" data-blok="vkarvane">
           <h2 class="lenta" translate="no">Вкарване</h2>
-          <p class="pod-tablitsata">Заплати Кеш · Фактури Кеш · Фактури Карта на едно място (негово, 05.09).</p>
+          ${obyasnenie('Заплати Кеш · Фактури Кеш · Фактури Карта на едно място (негово, 05.09).')}
           <p class="pod-tablitsata" data-vkarvane-pravo>${
             v.lipsvashti.length > 0
               ? `Вкарването е затворено: липсва${v.lipsvashti.length === 1 ? '' : 'т'} секция${v.lipsvashti.length === 1 ? '' : 'и'} „${v.lipsvashti.join('" · „')}". Върни име${v.lipsvashti.length === 1 ? 'то' : 'ната'} от Настройки → Номенклатури.`

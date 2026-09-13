@@ -176,7 +176,10 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
   proveri(
     'избраната секция остава сама · и сборът е нейният',
     await tekstNa(p, '[data-podtab-sverka="prihod"]'),
-    'секции 1 от 4 · редове 1',
+    // ДВА записа на едно и също нещо · разделът 4к на Сметки ги прави, за да
+    // докаже групирането (запис 213 т.2). Подтабът брои ЗАПИСИ, не редове на
+    // екрана — и точно затова числото тук е две, а на слятата таблица е едно.
+    'секции 1 от 4 · редове 2',
   );
   await p.click('[data-podtab="razhodi"]');
   await p.waitForSelector('[data-sektsiya-izbor="smetki.sektsiyataNaRazhoda"]');
@@ -207,7 +210,7 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
   );
   proveri(
     'и казва защо има забавяне от месец без Извлечения',
-    (await tekstNa(p, '[data-proverka-zabavyane]')).includes('ЕДИН МЕСЕЦ'),
+    (await tekstNa(p, '[data-obyasnenie="proverka-zabavyane"]')).includes('ЕДИН МЕСЕЦ'),
     true,
   );
   // подтабът се ПОМНИ · оставен на НАП, той чака следващия раздел на грешно място

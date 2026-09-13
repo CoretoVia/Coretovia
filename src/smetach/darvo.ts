@@ -47,15 +47,39 @@ export interface Darvo {
 const TABLITSA_NA_ZADACHITE = 'zadachi';
 const KOLONA_KAM = 'kam';
 
-/** Задачите по родител · в реда на началото, после по име, после по ред на създаване. */
+/**
+ * Задачите по родител · ЗАВЪРШЕНИТЕ ДОЛУ, после по Оценка, после по начало.
+ *
+ * `zadanie/CHISTO/07` И24, ДОСЛОВНО: „Началната подредба е: спешност → Оценка →
+ * **завършените долу**." Оттам трите стъпала на ключа, и то в този ред:
+ *
+ *   1. СВЪРШЕНА ли е · свършеното слиза под всичко живо. То не е изтрито и не е
+ *      скрито — просто вече не се състезава за вниманието му.
+ *   2. ОЦЕНКАТА · матрицата на Айзенхауер, чийто ПЪРВИ номер е „Спешно и Важно"
+ *      (`osnova.ts`). Тъй че възходящо по номер значи „спешното най-горе", и
+ *      спешността не е отделно стъпало — тя Е първата стойност на Оценката.
+ *      Задача без оценка пада най-долу в своята група, не най-горе.
+ *   3. НАЧАЛОТО, после името, после редът на създаване · за да е подредбата
+ *      устойчива: два еднакви ключа биха разменяли местата си при всяко рисуване.
+ */
 function zadachiPoRoditel(o: Ogledalo): Map<string, number[]> {
   const tv = o.tablitsi.get(TABLITSA_NA_ZADACHITE);
   const po = new Map<string, number[]>();
   if (tv === undefined) return po;
   const klyuchNaPodredbata = (i: number): string => {
+    const svarshena = kletkaNa(tv, i, 'svarshena');
+    const otsenka = kletkaNa(tv, i, 'otsenka');
     const ot = kletkaNa(tv, i, 'ot');
     const ime = kletkaNa(tv, i, 'ime');
-    return `${ot !== null && 'tekst' in ot ? ot.tekst : '9999-99-99'}|${ime !== null && 'tekst' in ime ? ime.tekst : ''}|${String(i).padStart(8, '0')}`;
+    const svarshenaE = svarshena !== null && 'tekst' in svarshena && svarshena.tekst !== '';
+    const nomer = otsenka !== null && 'nomer' in otsenka ? otsenka.nomer : 99;
+    return [
+      svarshenaE ? '1' : '0',
+      String(nomer).padStart(2, '0'),
+      ot !== null && 'tekst' in ot ? ot.tekst : '9999-99-99',
+      ime !== null && 'tekst' in ime ? ime.tekst : '',
+      String(i).padStart(8, '0'),
+    ].join('|');
   };
   for (const i of zhiviteRedove(tv)) {
     const kam = kletkaNa(tv, i, KOLONA_KAM);

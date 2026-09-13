@@ -68,6 +68,8 @@ import {
   IMENA_NA_TAKTOVETE,
   koloniNaTakta,
   type KolonaNaTakta,
+  mesetsatEVPerioda,
+  periodatNaKolonite,
   type SvoyPeriod,
   type Takt,
 } from '../../src/smetach/vreme.js';
@@ -597,6 +599,25 @@ export function narisuvayUpravlenie(k: KonteksNaEkrana): void {
       ? koloniNaTakta('svoy', dnes, period)
       : koloniNaTakta(deystvashtTakt, dnes);
 
+  /**
+   * АРХИВНАТА ТАБЛИЦА · `zadanie/CHISTO/07` И23, ДОСЛОВНО: „Когато Състоянието
+   * стане Завършено, оценката става празна, редът излиза от дневния ред и отива в
+   * **архивна таблица, която се показва само ако зареденият период я включва**."
+   *
+   * Тя не е втори живот на реда — редът си остава в дървото, но най-долу (И24).
+   * Архивът отговаря на друг въпрос: не „какво предстои", а „какво СВЪРШИХМЕ в
+   * този период" — и точно затова се подчинява на календара, а не на филтъра.
+   *
+   * ПРАЗЕН АРХИВ НЕ СЕ ПОКАЗВА · неговата дума е „само ако зареденият период я
+   * включва". Таблица с глави и вечно празно тяло е обещание, което не се спазва.
+   */
+  const periodatNaEkrana = periodatNaKolonite(koloniNaTaktove);
+  const vArhiva = redove.filter((r) => {
+    if (r.vid !== 'zadacha' || r.svarshena === '') return false;
+    if (periodatNaEkrana === null) return true;
+    return mesetsatEVPerioda(r.svarshena.slice(0, 7), periodatNaEkrana);
+  });
+
   const sborKletki: Zapechatan[] = [];
   for (const [j, g] of oblik.entries()) {
     const broy = Math.max(1, koloniPodGlavata(g).length);
@@ -718,6 +739,24 @@ export function narisuvayUpravlenie(k: KonteksNaEkrana): void {
     return h`<button type="button" class="malak" data-buton-ekran="${b.klyuch}"${podskazka(b.pomosht)}>${duma}</button>`;
   };
 
+  /** Архивът · показва се САМО когато има какво да покаже за периода (И23). */
+  const arhivatHTML = (): Zapechatan =>
+    vArhiva.length === 0
+      ? h``
+      : h`<div class="tablitsa-blok arhiv-blok" data-blok="arhiv">
+        <h2 class="lenta" translate="no">ЗАВЪРШЕНИ</h2>
+        <table class="reshetka arhiv" data-reshetka="arhiv">
+          <thead><tr class="glavi"><th>Свършена</th><th>Задача</th><th>Отговорник</th></tr></thead>
+          <tbody class="tablitsa">${vArhiva.map(
+            (r) =>
+              h`<tr class="arhiv-red" data-arhiv="${r.id}"><td class="arhiv-kletka" translate="no">${r.svarshena}</td><td class="arhiv-kletka arhiv-ime" translate="no">${r.ime}</td><td class="arhiv-kletka" translate="no">${r.dumi[oblik.findIndex((g) => g.kolona === 'otgovornik')] ?? ''}</td></tr>`,
+          )}</tbody>
+        </table>
+        <p class="pod-tablitsata" data-sverka="arhiv">завършени ${String(vArhiva.length)}${
+          periodatNaEkrana === null ? '' : ` · в периода на календара`
+        } · оценката им е изпразнена при потвърждаването</p>
+      </div>`;
+
   sloji(
     k.tyalo,
     h`
@@ -755,6 +794,7 @@ export function narisuvayUpravlenie(k: KonteksNaEkrana): void {
             : ` · без родител ${String(smetkite.bezRoditel.length)}`
         } · ${sastoyanietoNaRezhima(imetoNaSmetkite)}</p>
       </div>
+      ${arhivatHTML()}
       ${dumiteIIznosHTML(DUMI_OT_KNIGATA.upravlenie)}`,
   );
 

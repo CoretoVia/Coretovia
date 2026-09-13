@@ -21,6 +21,9 @@ const EVRO_1500 = '1 500,00 €';
 /** бюджетът на „Дело Сондаж" · тук е РАЗХОД и влиза с минус */
 const EVRO_MINUS_250000 = '-250\u202F000,00\u202F€';
 const EVRO_250000 = '250\u202F000,00\u202F€';
+/** движението −1 500 И бюджетът на „Сондаж" −250 000 · сборът им е ОБЩ РАЗХОД */
+const EVRO_MINUS_251500 = '-251\u202F500,00\u202F€';
+const EVRO_MINUS_250300 = '-250\u202F300,00\u202F€';
 /** нулата се пише с нейния си знак · Трезорът я показва, не я крие */
 const EVRO_MINUS_300 = '-300,00\u202F€';
 const EVRO_0 = '0,00 €';
@@ -49,6 +52,88 @@ async function noviyatRedSPari(p: Page): Promise<void> {
   await p.waitForSelector('[data-menyu]');
   await p.click('[data-menyu] [data-tochka="dobavi-dvizhenie"]');
 }
+/**
+ * ИЗМЕРЕНОТО НА ЧЕТИРИТЕ ЛЕНТИ · височина, дупка вдясно и ръбове.
+ *
+ * Негово, 13.09 (запис 203), точка 2: „да са с еднаква височина и **да са в
+ * симетрия колоните** … **без празни пространства**."
+ *
+ * И ДВЕТЕ СЕ МЕРЯТ, НЕ СЕ ГЛЕДАТ. Цената, платена на 12.09: поправка, направена
+ * на око, беше оборена с линийка в браузъра — пълнежът, който трябваше да
+ * затвори дупката, добавяше цял празен ред отдолу. Оттогава тази лента се съди
+ * само с `getBoundingClientRect`.
+ *
+ * И НА НЯКОЛКО ШИРИНИ · втора цена, платена на 13.09. Мерех на 1920 · 1440 ·
+ * 1200 и всичко беше по 43px; проходът върви на 1280 (подразбирането на
+ * Playwright) и също минаваше. В CI обаче падна с „чакано 1, видяно 2" — на
+ * ubuntu шрифтовете са други и редът на кеша ставаше с ЕДИН пиксел по-висок,
+ * защото полетата за въвеждане носят своя височина. Проверка на една ширина
+ * пропуска точно това. Оттук се мери на три, и най-тясната е под екрана му.
+ *
+ * `display: contents` не е клетка · обвивката на откритите бутони е прозрачна за
+ * мрежата, тъй че децата ѝ се броят на нейно място.
+ */
+/** Ширините, на които се съди · 1280 е подразбирането на прохода и на CI. */
+const SHIRINI = [1440, 1280, 960] as const;
+
+async function izmeriLentite(p: Page): Promise<{
+  visochini: number;
+  dupki: number;
+  chuzhdiRabove: number;
+  kletki: string;
+}> {
+  const vsichki: { visochini: number[]; dupki: number; chuzhdiRabove: number; kletki: string }[] =
+    [];
+  for (const shirina of SHIRINI) {
+    await p.setViewportSize({ width: shirina, height: 900 });
+    vsichki.push(await edinaSnimka(p));
+  }
+  // връщаме прозореца на ширината, с която тръгна разделът
+  await p.setViewportSize({ width: 1280, height: 720 });
+  return {
+    // ЕДНА височина през ВСИЧКИ ширини · не една на всяка поотделно
+    visochini: new Set(vsichki.flatMap((x) => x.visochini)).size,
+    dupki: vsichki.reduce((a, x) => a + x.dupki, 0),
+    chuzhdiRabove: vsichki.reduce((a, x) => a + x.chuzhdiRabove, 0),
+    kletki: vsichki[0]?.kletki ?? '',
+  };
+}
+
+async function edinaSnimka(p: Page): Promise<{
+  visochini: number[];
+  dupki: number;
+  chuzhdiRabove: number;
+  kletki: string;
+}> {
+  return p.$$eval('[data-zalepeno="smetki"] > *', (lenti) => {
+    const opis = lenti.map((l) => {
+      const detsa = [...l.children].flatMap((c) =>
+        getComputedStyle(c).display === 'contents' ? [...c.children] : [c],
+      );
+      const r = l.getBoundingClientRect();
+      return {
+        visochina: Math.round(r.height),
+        do: Math.round(r.right),
+        kray: Math.round(detsa[detsa.length - 1]?.getBoundingClientRect().right ?? 0),
+        rabove: detsa.map((c) => Math.round(c.getBoundingClientRect().left)),
+        broy: detsa.length,
+      };
+    });
+    // редът на кеша е НАЙ-ФИНИЯТ (десет клетки по един трак) · върху неговите
+    // ръбове трябва да лежат ръбовете на всички останали
+    const nayFin = opis.reduce((a, b) => (b.broy > a.broy ? b : a), opis[0]!);
+    return {
+      visochini: opis.map((l) => l.visochina),
+      dupki: opis.filter((l) => l.do - l.kray > 1).length,
+      chuzhdiRabove: opis.reduce(
+        (a, l) => a + l.rabove.filter((x) => !nayFin.rabove.includes(x)).length,
+        0,
+      ),
+      kletki: opis.map((l) => l.broy).join(' · '),
+    };
+  });
+}
+
 export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
   const { stranitsa: p, broyach } = ctx;
   let razdel = '—';
@@ -59,10 +144,20 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
   razdel = '4а · трите реда';
   await p.goto(`${ADRES}#/smetki`);
   await p.waitForSelector(ZALEPENO);
+  // ОСЕМ, НЕ ЕДИНАЙСЕТ · негово, 13.09 (запис 203) т.3: „Тази секция да стане на
+  // ЕДИН ред." Трите кеш полета оттук повтаряха реда на кеша под себе си и
+  // слязоха; те бяха и причината колоните да не се подреждат (т.2).
   proveri(
-    'единайсетте полета с цифри · и БАЛАНСЪТ е първото (негово, 13.09 т.5)',
+    'осемте полета с цифри · и БАЛАНСЪТ е първото (негово, 13.09 т.5)',
     (await tekstoveNa(p, `${ZALEPENO} [data-poleta] [data-pole] .ime`)).join(' · '),
-    'Баланс · Приход · Разходи · Резултат · Кеш дадено · Кеш изтеглено · Кеш разлика · движения · несверени · ДДС остатък · находки НАП',
+    'Баланс · Приход · Разходи · Резултат · движения · несверени · ДДС остатък · находки НАП',
+  );
+  proveri(
+    'и нито едно кеш число не стои на два реда',
+    (await tekstoveNa(p, `${ZALEPENO} [data-poleta] [data-pole] .ime`)).filter((x) =>
+      x.startsWith('Кеш'),
+    ).length,
+    0,
   );
   // негово, 13.09 (запис 203), точка 1: „Реда на подтабовете в Сметки да се
   // качи на 2ро място." Първо КОЛКО, после КЪДЕ, после КАКВО ВЪВЕЖДАМ, накрая
@@ -98,6 +193,21 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
     await p.$$eval('[data-dobavi-dvizhenie]', (es) => es.length),
     0,
   );
+
+  // ══ ЧЕТИРИТЕ ЛЕНТИ СА ЕДНА МРЕЖА · негово, 13.09 (запис 203) т.2 ═══
+  const lentite = await izmeriLentite(p);
+  proveri(
+    'клетките по лента · осем полета · пет подтаба · десет на кеша · шест действия',
+    lentite.kletki,
+    '8 · 5 · 10 · 6',
+  );
+  proveri(
+    'ЕДНА височина за четирите, на ТРИ ширини · колко различни има ОБЩО',
+    lentite.visochini,
+    1,
+  );
+  proveri('БЕЗ ПРАЗНИ ПРОСТРАНСТВА · колко ленти не стигат десния си край', lentite.dupki, 0);
+  proveri('СИМЕТРИЯ · колко ръба падат ИЗВЪН подложката на кеш-реда', lentite.chuzhdiRabove, 0);
   proveri(
     'двете му ленти стоят една под друга',
     (await tekstoveNa(p, '[data-blok="prihod"] .lenta, [data-blok="razhod"] .lenta')).join(' · '),
@@ -177,11 +287,40 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
   await p.selectOption(`${ch} select[data-kolona="sektsiyaR"]`, '1');
   await p.press(`${ch} input[data-kolona="suma"]`, 'Enter');
   await p.waitForSelector('[data-reshetka="razhod"] tr.red[data-tablitsa="dvizheniya"]');
-  proveri('ОБЩ Разходи', await tekstNa(p, '[data-sbor="razhod"]'), EVRO_MINUS_1500);
+  // ══ БЮДЖЕТИТЕ НА ЗАДАЧИТЕ СА ЧАСТ ОТ РАЗХОДА · негово, запис 163 ══════
+  //
+  // „Скриването на Задачите с Бюджет … от Управление в Сметки ще ги ИЗКЛЮЧВА от
+  // изчисленията." Дотук те изобщо не бяха включени: рисуваха се като редове със
+  // свой междинен сбор, а ОБЩ РАЗХОД ги подминаваше — тоест бутонът „изключваше"
+  // нещо, което никога не е било вътре, и числото не мърдаше.
+  //
+  // Тук: движението е −1 500, а задачата „Сондаж" носи бюджет −250 000.
+  proveri(
+    'ОБЩ Разходи · движението И бюджетът на задачата',
+    await tekstNa(p, '[data-sbor="razhod"]'),
+    EVRO_MINUS_251500,
+  );
   proveri(
     'Резултатът е приход + разход',
     await tekstNa(p, '[data-tsifra="rezultat"]'),
-    '-300,00 €',
+    EVRO_MINUS_250300,
+  );
+  // И БУТОНЪТ ГИ ВАЖДА · сборът пада ТОЧНО с бюджета им, не с друго число
+  await natisniButon(p, 'skriy-dela');
+  await p.waitForFunction(
+    (evro) => document.querySelector('[data-sbor="razhod"]')?.textContent?.trim() === evro,
+    EVRO_MINUS_1500,
+  );
+  proveri(
+    'ИЗВАДЕНИТЕ задачи излизат и от сметката · сборът пада с бюджета им',
+    `${await tekstNa(p, '[data-sbor="razhod"]')} · ${await tekstNa(p, '[data-tsifra="rezultat"]')}`,
+    `${EVRO_MINUS_1500} · -300,00 €`,
+  );
+  // и се връщат · ЕДИН бутон, две посоки
+  await natisniButon(p, 'skriy-dela');
+  await p.waitForFunction(
+    (evro) => document.querySelector('[data-sbor="razhod"]')?.textContent?.trim() === evro,
+    EVRO_MINUS_251500,
   );
   proveri(
     'секцията „Вкарване" събира трите му секции',
@@ -210,26 +349,28 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
   // се смята от секцията, и чакане по него би минало, преди Портата да е върнала.
   await p.waitForFunction(
     (evro) =>
-      document.querySelector('[data-tsifra="kesh-izvlechenie"]')?.textContent?.trim() === evro,
+      document.querySelector('[data-tsifra="trezor-iztegleno"]')?.textContent?.trim() === evro,
     EVRO_1500,
   );
-  proveri('Кеш дадено', await tekstNa(p, '[data-tsifra="kesh-dadeno"]'), EVRO_1500);
-  proveri('Кеш изтеглено', await tekstNa(p, '[data-tsifra="kesh-izvlechenie"]'), EVRO_1500);
-  // „Кеш вкарано" стана огледало на „Кеш дадено" и си отиде · на мястото му
-  // стои РАЗЛИКАТА дадено − изтеглено (негово, 13.09 · запис 205)
+  // ЧИСЛАТА ЖИВЕЯТ НА ЕДИН РЕД · негово, 13.09 (запис 203) т.3. Дотук ги имаше и
+  // горе, и тук; горните слязоха, и проверката гледа там, където те са.
   proveri(
-    'Кеш разлика · дадено − изтеглено · нулата значи, че сверката затваря',
-    await tekstNa(p, '[data-tsifra="kesh-razlika"]'),
-    EVRO_0,
+    'дадени Заплати Кеш · сметнати от секцията, не писани',
+    await tekstNa(p, '[data-tsifra="kesh-zaplati"]'),
+    EVRO_1500,
   );
+  proveri('Изтеглено · Карта', await tekstNa(p, '[data-tsifra="trezor-iztegleno"]'), EVRO_1500);
   proveri('полетата на двете форми имат име', await poletaBezIme(p), 0);
   const sverki = await tekstNa(p, '[data-kesh-sverki]');
   // ЕДНА сверка · другата стана тъждество, когато дадените пари почнаха да се
   // смятат от същите редове, срещу които се сверяваха (негово, 13.09 т.3)
   proveri(
-    'сверката банка ↔ въведено затваря · и тя е една, защото другата стана тъждество',
+    // ДВЕТЕ, които той изброи (запис 203 т.3). Втората е тъждество и винаги
+    // затваря — но денят, в който спре, значи, че даденото и редовете са се
+    // разминали. Изброено от него не изчезва мълчаливо (правило 12).
+    'двете сверки на кеша стоят на реда · и втората винаги затваря',
     `${sverki.split('затваря').length - 1} · ${sverki.includes('разлика')}`,
-    '1 · false',
+    '2 · false',
   );
 
   // ══ 4в2 · БАЛАНСЪТ и записът по месеци · негово, 13.09 (запис 203) т.5 ═
@@ -398,14 +539,18 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
     `${EVRO_0} · ${EVRO_1500} · ${EVRO_0}`,
   );
   proveri(
-    'и трите имена стоят под числата · човек чете какво гледа',
+    // „Изтеглено · Карта", не „Изтеглено общо" · негово, 13.09 (запис 203) т.4:
+    // „изтеглено по извлечение от Карта САМО". Кешът в ръка идва от банкомат,
+    // тоест с картата, и се вижда в НЕЙНОТО извлечение (`zadanie/CHISTO/06`
+    // M06-12 · M06-19). Числото още се въвежда на ръка и подсказката го казва.
+    'и трите имена стоят под числата · и второто казва ОТКЪДЕ идва',
     (
       await tekstoveNa(
         p,
         '[data-pole="trezor"] .ime, [data-pole="trezor-iztegleno"] .ime, [data-pole="trezor-obshto"] .ime',
       )
     ).join(' · '),
-    'Трезор · Изтеглено общо · Общ Трезор',
+    'Трезор · Изтеглено · Карта · Общ Трезор',
   );
 
   // ══ 4ж · ТАКТЪТ И В СМЕТКИ · негово, 11.09 (запис 195), точка 4 ═══════
@@ -612,5 +757,75 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
     'върнат на „всички" · Разходи се връща цял и сверката спира да се оплаква',
     `${await tekstNa(p, '[data-sverka="filtar-prihod"]')} · ${await tekstNa(p, '[data-sbor="prihod"]')}`,
     `${vsichkiPrihod} · ${EVRO_1200}`,
+  );
+
+  // ══ 4к · ЕДИН РЕД НА ЕДНО НЕЩО · негово, 13.09 (запис 213) т.2 ══════════
+  //
+  // „Редовете с една и съща Задача или ред от сметки НЕ СЕ ПРЕНАСЯ В НОВ РЕД
+  // всеки месец, а това става в самия календар където всеки ред минава през
+  // всеки такт, ако етапа е по голям събира всички за периода от реда в
+  // календара и го покзава в колона бюджет на всеки ред."
+  //
+  // Разделът стои НАКРАЯ нарочно: той добавя втори запис на едно и също нещо, а
+  // всяка проверка след него, която брои движения, би отчела едно в повече.
+  razdel = '4к · един ред на едно нещо';
+  await noviyatRedSPari(p);
+  await p.waitForSelector(ch);
+  await p.selectOption(`${ch} select[data-kolona="kam"]`, { index: 1 });
+  await p.selectOption(`${ch} select[data-kolona="sektsiya"]`, '1');
+  await p.selectOption(`${ch} select[data-kolona="funktsiya"]`, '3');
+  await p.fill(`${ch} input[data-kolona="mesets"]`, MESETS);
+  await p.fill(`${ch} input[data-kolona="suma"]`, '1200');
+  await p.press(`${ch} input[data-kolona="suma"]`, 'Enter');
+  await p.waitForFunction(
+    () =>
+      document.querySelectorAll('[data-reshetka="prihod"] tbody tr.red[data-v-grupata]').length ===
+      1,
+  );
+  proveri(
+    'ДВА записа · ЕДИН ред на екрана',
+    `${await p.$$eval('[data-reshetka="prihod"] tbody tr.red', (es) => es.length)} · ${await p.$eval(
+      '[data-reshetka="prihod"] tbody tr.red[data-v-grupata]',
+      (e) => e.getAttribute('data-v-grupata'),
+    )}`,
+    '1 · 2',
+  );
+  proveri(
+    'СБОРЪТ за периода стои в колоната · не сумата на едното плащане',
+    await p.$eval('[data-reshetka="prihod"] tbody tr.red td[data-kolona="suma"]', (e) =>
+      (e as HTMLElement).innerText.trim(),
+    ),
+    '2 400,00 €',
+  );
+  proveri(
+    'и НЕ СЕ РЕДАКТИРА · сборът на две плащания не е число за пренаписване',
+    await p.$eval('[data-reshetka="prihod"] tbody tr.red td[data-kolona="suma"]', (e) =>
+      e.hasAttribute('data-redakt'),
+    ),
+    false,
+  );
+  proveri(
+    'клетката на календара носи ДВЕТЕ · и казва, че са две',
+    `${await p.$eval(
+      '[data-reshetka="prihod"] tbody tr.red td.takt.dvizhenie',
+      // само първият текстов възел · броячът е свой елемент до числото
+      (e) => e.firstChild?.textContent?.trim() ?? '',
+    )} · ${await p.$eval(
+      '[data-reshetka="prihod"] tbody tr.red td.takt.dvizhenie .pokrivashti',
+      (e) => e.textContent,
+    )}`,
+    '2 400,00 € · 2',
+  );
+  proveri(
+    'но СЕ ПИПА · белегът за редакция сочи едно от двете',
+    await p.$$eval('[data-reshetka="prihod"] tbody tr.red td.takt[data-redakt]', (es) => es.length),
+    1,
+  );
+  proveri(
+    'и броячът КАЗВА, че нищо не е изчезнало',
+    (await tekstNa(p, '[data-sverka="filtar-prihod"]')).includes(
+      '1 повторения се четат в календара',
+    ),
+    true,
   );
 }

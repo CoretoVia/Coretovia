@@ -367,6 +367,11 @@ async function tragni(ekran: HTMLElement): Promise<void> {
     );
     // Настройки може да е сменил степента · селектът в главата казва същото
     izborNaStepen.value = stepen;
+    // И КОРЕНЪТ Я НОСИ · негово, 13.09 (запис 213) т.3: „Текстовете с обяснение
+    // на моите думи да се показва в Начален Хелп, а в Стандартния да е чист без
+    // текст освен при задържане на различните места." Стилът не може да пита
+    // функция; той пита белег, и белегът стои на едно място — тук.
+    document.documentElement.dataset['pomosht'] = stepen;
     for (const a of ekran!.querySelectorAll<HTMLElement>('[data-prozorets]')) {
       a.classList.toggle('tekusht', a.dataset['prozorets'] === klyuch);
     }
