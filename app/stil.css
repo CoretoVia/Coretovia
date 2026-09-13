@@ -1390,6 +1390,81 @@ body.vlacha-shirina {
   line-height: 1.2;
 }
 
+/* ═══ КОЕФИЦИЕНТЪТ ПО КОЛОНИТЕ · графика · диаграма · таблица ═══════════════
+
+   Негово, 14.09 (запис 226) т.4: „…да има падащо меню за избор на конкретен
+   коефициент според периода и такта да избираш от падащо меню диаграма, графика
+   или таблица(припомни си)."
+
+   „Припомни си" е Заданието: `zadanie/CHISTO/11` M11-06 (ДВЕ падащи менюта) и
+   M11-07 (три стойности: Диаграма · Графика · Таблица).
+
+   РИСУВА СЕ С SVG, БЕЗ БИБЛИОТЕКА (правило 9: библиотека само срещу нерешен
+   проблем). Цветовете са същите две, с които екранът вече говори за пари:
+   зеленото е приход, червеното е разход — и в чертежа знакът остава законът
+   (правило 16). */
+.ekran .chertezh-blok {
+  overflow-x: auto;
+  margin: 0.25rem 0 0.5rem;
+  border: 1px solid var(--linija);
+  background: var(--hartiya);
+}
+
+.ekran .chertezh {
+  display: block;
+  min-width: 100%;
+}
+
+.ekran .chertezh .nulata {
+  stroke: var(--linija);
+  stroke-width: 1;
+}
+
+.ekran .chertezh .stalb.prihod,
+.ekran .chertezh .tochka.prihod {
+  fill: var(--zeleno);
+}
+
+.ekran .chertezh .stalb.razhod,
+.ekran .chertezh .tochka.razhod {
+  fill: var(--cherveno);
+}
+
+.ekran .chertezh .liniya {
+  fill: none;
+  stroke: var(--zeleno);
+  stroke-width: 2;
+}
+
+.ekran .chertezh .nadpis {
+  font-size: 9px;
+  fill: var(--sivo);
+  text-anchor: middle;
+}
+
+/* ИЗБРАНИЯТ показател се вижда сред останалите · инак менюто горе и картите
+   долу изглеждат като две несвързани неща */
+.ekran [data-pokazateli] .pole-s-tsifra.izbran {
+  border-color: var(--zeleno);
+  box-shadow: inset 0 0 0 1px var(--zeleno);
+}
+
+/* СИВОТО КАЗВА ЗАЩО · правило 12 · `zadanie/CHISTO/11` M11-12: коефициент, който
+   не може да се смята за избрания такт, се показва сив и казва защо. Не изчезва. */
+.ekran .vest.siv {
+  color: var(--sivo);
+  font-style: italic;
+}
+
+/* СВОЙ КЛАС, не `takt` · клетката тук е КОЛОНА НА КОЕФИЦИЕНТА, не на календара.
+   Заемането на чужд клас върза това правило за специфичността на календара и
+   Biome го хвана веднага (noDescendingSpecificity). Едно име за едно нещо. */
+.ekran .reshetka.koefitsient td.kletka.evro,
+.ekran .reshetka.koefitsient th.kolona-takt {
+  text-align: right;
+  white-space: nowrap;
+}
+
 /* ═══ ЧЕТИРИТЕ СТАЦИОНАРНИ РЕДА · негово, 11.09 (запис 193) ═══
 
    „Щом не става заради залепения хедър, да го направим не залепен хедър а като

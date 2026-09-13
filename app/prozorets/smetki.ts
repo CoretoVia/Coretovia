@@ -30,7 +30,13 @@ import { slotNaKolonata } from '../../src/model/kolona.js';
 import { kolonaNa } from '../../src/model/tablitsa.js';
 import { redKato } from '../../src/ogledalo/tablitsa.js';
 import { denNaMeseca, dvanaysetMeseca } from '../../src/smetach/kalendar.js';
-import { type Pokazatel, pokazatelite } from '../../src/smetach/pokazateli.js';
+import {
+  type KolonaSPari,
+  type Pokazatel,
+  type RedNaKoefitsienta,
+  koefitsientatPoKolona,
+  pokazatelite,
+} from '../../src/smetach/pokazateli.js';
 import { napTablitsite, type RedNaNap } from '../../src/smetach/nap-tablitsite.js';
 import { trezorat } from '../../src/smetach/trezor.js';
 import { prodazhbite } from '../../src/smetach/prodazhbi.js';
@@ -124,6 +130,17 @@ const PAMET = Object.freeze({
   sektsiyataNaRazhoda: 'smetki.sektsiyataNaRazhoda',
   /** пусната ли е Проверката · тя е ДЕЙСТВИЕ с бутон (негово, запис 144) */
   proverkata: 'smetki.proverkata',
+  /**
+   * ДВЕТЕ МЕНЮТА НА КОЕФИЦИЕНТИТЕ · негово, 14.09 (запис 226) т.4.
+   *
+   * „…падащо меню за избор на конкретен коефициент според периода и такта да
+   * избираш от падащо меню диаграма, графика или таблица."
+   *
+   * Заданието го иска от по-рано и с числа: `zadanie/CHISTO/11` M11-06 („точно
+   * ДВЕ падащи менюта") и M11-07 („три стойности: Диаграма · Графика · Таблица").
+   */
+  koefitsient: 'smetki.koefitsient',
+  vidNaPokazvaneto: 'smetki.vidNaPokazvaneto',
 });
 
 /** прозорецът · името му живее САМО в `osnova.ts` (К1 · `tests/osemte.test.ts` обхожда и `app/`) */
@@ -229,24 +246,141 @@ interface RedNaEkrana {
   readonly vGrupata: number;
 }
 
+/** Трите начина на показване · негово, запис 226 т.4 · `zadanie/CHISTO/11` M11-07. */
+const VIDOVE_NA_POKAZVANETO = Object.freeze([
+  { klyuch: 'tablitsa', ime: 'Таблица' },
+  { klyuch: 'grafika', ime: 'Графика' },
+  { klyuch: 'diagrama', ime: 'Диаграма' },
+]);
+
 /**
- * ДАННИТЕ ЗА КОЕФИЦИЕНТИТЕ · под таблицата и диаграмата.
+ * ГРАФИКАТА И ДИАГРАМАТА · рисувани на ръка, без нито една библиотека.
  *
- * Негово, 11.09 (запис 194): „Събери основните данни необходими за
- * изчисляване на коефициентите от отчети. Искам под таблицата и диаграмата да
- * дадеш всички данни които може да се съберат от Приходи и Разходи."
+ * Правило 9 пуска библиотека САМО срещу нерешен проблем. Линия и стълбове по
+ * готови числа не са нерешен проблем — те са двайсет реда SVG. Библиотека тук
+ * би донесла килобайти, лиценз и втори начин да се смятат пари.
  *
- * Всяко число стои с ФОРМУЛАТА си (правило 28): екранът казва откъде идва, а
- * не само колко е. Оттук нататък Отчетите стъпват върху видяно, не върху
- * обещано.
+ * ЕДНА СКАЛА ЗА ДВЕТЕ · височината идва от най-голямото по МОДУЛ число, за да
+ * се вижда и отрицателното (разходът е с минус, правило 16). Нулевата линия
+ * стои там, където ѝ е мястото, а не на дъното: диаграма, която рисува −2 400
+ * като кратко стълбче нагоре, лъже за посоката.
  */
-function blokatNaPokazatelite(spisak: readonly Pokazatel[]): Zapechatan {
+function chertezhat(red: RedNaKoefitsienta, vid: string): Zapechatan {
+  const tochki = red.tochki.filter((x) => x.chislo !== null);
+  if (tochki.length === 0)
+    return h`<p class="vest" data-chertezh-prazen>Нито една колона не дава число за „${red.ime}" в този период.</p>`;
+  const chisla = tochki.map((x) => x.chislo ?? 0);
+  const nay = Math.max(...chisla.map((x) => Math.abs(x)), 1);
+  const SHIR = 40;
+  const VIS = 120;
+  const shirina = Math.max(SHIR * tochki.length, SHIR);
+  // нулата е по средата, когато има и надолу; на дъното, когато всичко е нагоре
+  const imaOtritsatelno = chisla.some((x) => x < 0);
+  const nulata = imaOtritsatelno ? VIS / 2 : VIS;
+  const visochinata = (x: number): number =>
+    (Math.abs(x) / nay) * (imaOtritsatelno ? VIS / 2 : VIS);
+  const gore = (x: number): number => (x >= 0 ? nulata - visochinata(x) : nulata);
+  const vrah = (x: number): number => (x >= 0 ? gore(x) : nulata + visochinata(x));
+
+  return h`<svg class="chertezh" viewBox="0 0 ${String(shirina)} ${String(VIS + 18)}" width="${String(
+    shirina,
+  )}" height="${String(VIS + 18)}" role="img" aria-label="${`${red.ime} по колоните на календара`}">
+      <line x1="0" y1="${String(nulata)}" x2="${String(shirina)}" y2="${String(nulata)}" class="nulata" />
+      ${
+        vid === 'grafika'
+          ? h`<polyline points="${tochki
+              .map((t, i) => `${String(i * SHIR + SHIR / 2)},${String(vrah(t.chislo ?? 0))}`)
+              .join(' ')}" class="liniya" />${tochki.map(
+              (t, i) =>
+                h`<circle cx="${String(i * SHIR + SHIR / 2)}" cy="${String(
+                  vrah(t.chislo ?? 0),
+                )}" r="3" class="${(t.chislo ?? 0) < 0 ? 'tochka razhod' : 'tochka prihod'}"><title>${t.nadpis} · ${t.dumi}</title></circle>`,
+            )}`
+          : tochki.map(
+              (t, i) =>
+                h`<rect x="${String(i * SHIR + 6)}" y="${String(gore(t.chislo ?? 0))}" width="${String(
+                  SHIR - 12,
+                )}" height="${String(Math.max(visochinata(t.chislo ?? 0), 1))}" class="${
+                  (t.chislo ?? 0) < 0 ? 'stalb razhod' : 'stalb prihod'
+                }"><title>${t.nadpis} · ${t.dumi}</title></rect>`,
+            )
+      }
+      ${tochki.map(
+        (t, i) =>
+          h`<text x="${String(i * SHIR + SHIR / 2)}" y="${String(VIS + 14)}" class="nadpis">${t.nadpis}</text>`,
+      )}
+    </svg>`;
+}
+
+/**
+ * ДАННИТЕ ЗА КОЕФИЦИЕНТИТЕ · под календара, с ДВЕТЕ МУ МЕНЮТА.
+ *
+ * Негово, 11.09 (запис 194): „Събери основните данни необходими за изчисляване
+ * на коефициентите от отчети. Искам под таблицата и диаграмата да дадеш всички
+ * данни които може да се съберат от Приходи и Разходи."
+ *
+ * И 14.09 (запис 226) т.4: „…под него данните за коефициентите и да има падащо
+ * меню за избор на конкретен коефициент според периода и такта да избираш от
+ * падащо меню диаграма, графика или таблица(припомни си)."
+ *
+ * „Припомни си" е Заданието и то го е казало отдавна: `zadanie/CHISTO/11`
+ * **M11-06** („точно ДВЕ падащи менюта: (а) коефициент; (б) начин на показване"),
+ * **M11-07** („три стойности: Диаграма · Графика · Таблица"), **M11-22** („при
+ * избран коефициент програмата изписва ФОРМУЛАТА на един ред"), **M11-11**
+ * („тактът и периодът менят СТОЙНОСТИТЕ, не списъка") и **M11-12** („коефициент,
+ * който не може да се смята… се показва СИВ и КАЗВА защо. Не изчезва").
+ *
+ * ВСИЧКИТЕ ДВАНАЙСЕТ ОСТАВАТ ВИДИМИ ОТДОЛУ. Менюто избира кой се РАЗБИВА по
+ * колоните; то не крие останалите — те са „данните", които той поиска да са под
+ * таблицата, и всяко от тях носи формулата си (правило 28).
+ */
+function blokatNaPokazatelite(
+  spisak: readonly Pokazatel[],
+  izbran: string,
+  vid: string,
+  kolonite: readonly KolonaSPari[],
+): Zapechatan {
+  const koyto = spisak.find((x) => x.klyuch === izbran) ?? spisak[0];
+  if (koyto === undefined) return h``;
+  const red = koefitsientatPoKolona(koyto.klyuch, koyto.ime, koyto.formula, kolonite);
   return h`<section class="sektsiya" data-sektsiya="pokazateli">
       <h2 class="lenta">Данни за коефициентите</h2>
       ${obyasnenie('Събрано от Приход и Разход за показания период · всяко число носи формулата си при задържане.')}
+      <div class="deystviya butoni-malki">
+        <label class="malak buton-grupa">коефициент <select class="pole malak" data-izbor-koefitsient aria-label="кой коефициент се разбива по колоните">
+          ${spisak.map(
+            (x) =>
+              h`<option value="${x.klyuch}" ${x.klyuch === koyto.klyuch ? 'selected' : ''}>${x.ime}</option>`,
+          )}
+        </select></label>
+        <label class="malak buton-grupa">показване <select class="pole malak" data-izbor-vid aria-label="диаграма, графика или таблица">
+          ${VIDOVE_NA_POKAZVANETO.map(
+            (x) =>
+              h`<option value="${x.klyuch}" ${x.klyuch === vid ? 'selected' : ''}>${x.ime}</option>`,
+          )}
+        </select></label>
+        <span class="vest" data-koefitsient-vest translate="no">${
+          red.zashtoNe === ''
+            ? `${String(red.tochki.length)} колони по такта`
+            : 'не се чертае по такта'
+        }</span>
+      </div>
+      <p class="pod-tablitsata" data-koefitsient-formula>${koyto.ime} · ${koyto.formula}</p>
+      ${
+        red.zashtoNe !== ''
+          ? h`<p class="vest siv" data-koefitsient-siv>„${koyto.ime}" не се разбива по колони: ${red.zashtoNe}. Числото му за целия период стои долу.</p>`
+          : vid === 'tablitsa'
+            ? h`<div class="chertezh-blok"><table class="reshetka koefitsient" data-reshetka="koefitsient">
+        <thead><tr><th>колона</th>${red.tochki.map((x) => h`<th class="kolona-takt">${x.nadpis}</th>`)}</tr></thead>
+        <tbody class="tablitsa"><tr class="red"><td class="kletka tekst" translate="no">${koyto.ime}</td>${red.tochki.map(
+          (x) => h`<td class="kletka evro" translate="no">${x.dumi}</td>`,
+        )}</tr></tbody>
+      </table></div>`
+            : h`<div class="chertezh-blok">${chertezhat(red, vid)}</div>`
+      }
       <div class="poleta-s-tsifri" data-pokazateli>${spisak.map(
         (x) =>
-          h`<div class="pole-s-tsifra" data-pokazatel="${x.klyuch}"${podskazka(
+          h`<div class="pole-s-tsifra${x.klyuch === koyto.klyuch ? ' izbran' : ''}" data-pokazatel="${x.klyuch}"${podskazka(
             pomosht(
               `Данните за коефициентите идват от Приход и Разход, не се въвеждат на ръка · „${x.ime}" се смята при всяко рисуване.`,
               x.formula,
@@ -349,6 +483,9 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
   const izbranaPrihod = chetiEkranno<string>(PAMET.sektsiyataNaPrihoda, 'vsichki');
   const izbranaRazhod = chetiEkranno<string>(PAMET.sektsiyataNaRazhoda, 'vsichki');
   const proverkataEPusnata = chetiEkranno<boolean>(PAMET.proverkata, false);
+  // ДВЕТЕ МЕНЮТА НА КОЕФИЦИЕНТИТЕ · негово, 14.09 (запис 226) т.4
+  const izbraniyatKoefitsient = chetiEkranno<string>(PAMET.koefitsient, 'rezultat');
+  const vidatNaPokazvaneto = chetiEkranno<string>(PAMET.vidNaPokazvaneto, 'diagrama');
   /**
    * КОЛКО РАЗЛИЧНИ МЕСЕЦА покрива календарът · не колко са колоните му.
    *
@@ -551,22 +688,83 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
    * цялата страна; два пъти написан, той щеше да се разминава при първата
    * промяна на правилото. Обход 8 на чистотата го хвана веднага.
    */
-  const sboroveNaTaktovete = (sektsii: readonly Sektsiya[]): readonly Zapechatan[] => {
+  /**
+   * СБОРЪТ ПО КОЛОНА · числата, преди да станат клетки.
+   *
+   * Един и същи сбор трябва на ДВЕ места: на реда със сборовете в календара и
+   * на коефициентите под него (негово, 14.09 · запис 226 т.4). Написан два пъти,
+   * той е две истини, които се разминават при първата промяна — а точно това
+   * правило 14 нарича дефект. Тук се смята веднъж; клетките са изглед над него.
+   */
+  const sborovetePoKolona = (sektsii: readonly Sektsiya[]): readonly number[] => {
     const sborove = new Array<number>(koloniteNaGanta.length).fill(0);
     for (const sek of sektsii)
       for (const r of sek.redove) {
         const j = kolonataNa(r.data === '' ? denNaMeseca(r.mesets) : r.data);
         if (j >= 0) sborove[j] = (sborove[j] ?? 0) + r.suma_st;
       }
-    return sborove.map(
+    return sborove;
+  };
+
+  const sboroveNaTaktovete = (sektsii: readonly Sektsiya[]): readonly Zapechatan[] =>
+    sborovetePoKolona(sektsii).map(
       (sbor, i) =>
         h`<td class="takt evro${koloniteNaGanta[i]?.dnes === true ? ' dnes' : ''}" translate="no">${
           sbor === 0 ? '' : pishi(sbor)
         }</td>`,
     );
-  };
+  /**
+   * КОЛОНИТЕ НА КАЛЕНДАРА, ВСЯКА СЪС СВОИТЕ ПАРИ · за коефициентите под него.
+   *
+   * Негово, 14.09 (запис 226) т.4: „…под него данните за коефициентите и да има
+   * падащо меню за избор на конкретен коефициент СПОРЕД ПЕРИОДА И ТАКТА."
+   *
+   * ЕДНИТЕ И СЪЩИ ЧИСЛА, КАКТО НАД ТЯХ. В колоната влиза точно онова, което
+   * влиза и в реда със сборовете горе: секциите, ДДС и бюджетите на задачите.
+   * Пропуснеше ли се едното, коефициентът под таблицата би казвал друго от
+   * сбора точно над него — и никой не би разбрал кое от двете лъже (същият
+   * дефект, поправен на 13.09 за числата за целия период).
+   */
+  const koloniteSPari: readonly KolonaSPari[] = ((): readonly KolonaSPari[] => {
+    const prihod = [...sborovetePoKolona(fPrihod.sektsii)];
+    const razhod = [...sborovetePoKolona(fRazhod.sektsii)];
+    // ДДС · всеки месец пада в своята колона, по същия път, по който го рисува редът
+    for (const strana of ['prihod', 'razhod'] as const)
+      for (const m of ddsNa(strana)) {
+        const j = kolonataNa(`${m.mesets}-01`);
+        if (j < 0) continue;
+        if (strana === 'prihod') prihod[j] = (prihod[j] ?? 0) + m.suma;
+        else razhod[j] = (razhod[j] ?? 0) + m.suma;
+      }
+    // ЗАДАЧИТЕ С БЮДЖЕТ · планиран разход, с минус (правило 16) · и само когато
+    // режимът ги брои — инак сборът горе и коефициентът долу биха се разминали
+    if (!skritiZadachi)
+      for (const z of zadachite.redove) {
+        const j = kolonataNa(z.data);
+        if (j >= 0) razhod[j] = (razhod[j] ?? 0) - z.byudzhet_st;
+      }
+    return koloniteNaGanta.map((kol, i) => ({
+      nadpis: kol.nadpis,
+      prihod_st: prihod[i] ?? 0,
+      razhod_st: razhod[i] ?? 0,
+    }));
+  })();
+
   /** Главите на такта · и празните им клетки за редовете без календар. */
   const glaviNaTaktovete = glaviteNaTakta(koloniteNaGanta);
+  /**
+   * ПРАЗНИТЕ КЛЕТКИ НА ТАКТА · САМО за редове В СЛЯТАТА таблица.
+   *
+   * Ред, който няма число в календара (групата на ДДС е сбор на месеците под
+   * себе си и би броила два пъти), пак трябва да носи толкова клетки, колкото
+   * има колони — инак таблицата се изкривява.
+   *
+   * НО ТАБЛИЦА БЕЗ КАЛЕНДАР НЕ ИСКА И ПРАЗНИ · негово, 14.09 (запис 226) т.4:
+   * „Нека всеки таб приеме само при себе си таблиците, които са РАЗЛИЧНИ от
+   * Календара." Измерено същия ден: „Вкарване" и двата подтаба (Приходи ·
+   * Разходи) имаха глава от ПЕТ колони и редове от СЕДЕМНАЙСЕТ клетки —
+   * дванайсет призрачни колони, които никой не вижда и които разтягат реда.
+   */
   const prazniTaktove = koloniteNaGanta.map(() => h`<td class="takt"></td>`);
 
   const redHTML = (r: RedNaEkrana, samoGledane = false, sTakt = false): Zapechatan => {
@@ -606,7 +804,7 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
     });
     return h`<tr class="red" data-id="${r.id}" data-tablitsa="${TABLITSA}" data-seq="${red.seq}"${
       r.vGrupata <= 1 ? '' : h` data-v-grupata="${String(r.vGrupata)}"`
-    }>${tds}${sTakt ? taktoveNaGrupata(r, samoGledane) : prazniTaktove}</tr>`;
+    }>${tds}${sTakt ? taktoveNaGrupata(r, samoGledane) : ''}</tr>`;
   };
 
   /**
@@ -712,7 +910,7 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
     h`<tr class="grupata sektsiya" data-sektsiya="${sek.strana}·${sek.nomer}">
         <td colspan="${KOLONI.length - 1}" translate="no">${sek.tekst}</td>
         <td class="evro" data-sbor-sektsiya="${sek.strana}·${sek.nomer}"${izvedena('sektsiya')} translate="no">${pishi(sek.sbor)}</td>
-        ${sTakt ? sboroveNaTaktovete([sek]) : prazniTaktove}
+        ${sTakt ? sboroveNaTaktovete([sek]) : ''}
       </tr>${grupiteNa(sek).map((g) =>
         redHTML(
           {
@@ -1315,7 +1513,21 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
               )
             : podtab === 'proverki'
               ? proverkiHTML()
-              : h`<section class="tablitsa-blok" data-blok="nov">
+              : h`<section class="smetki-tyalo" data-smetki>
+      <div class="smetki-blokove">
+        ${stranaHTML('prihod', fPrihod.sektsii, sborPrihod, fPrihod.broyVidimi, fPrihod.broyVsichki)}
+        ${stranaHTML('razhod', fRazhod.sektsii, sborRazhod, fRazhod.broyVidimi, fRazhod.broyVsichki)}
+        <!--
+          ЧЕРНОВАТА Е ПОД КАЛЕНДАРА · негово, 14.09 (запис 226) т.2, ДОСЛОВНО:
+          „Този ред се премества под календара: към име Приход Разход Функция
+          Състояние месец дата сума / Тук се отваря черновата…"
+
+          Дотук тя стоеше НАД слятата таблица — тоест първото, което човек
+          вижда в Сметки, беше празен ред с покана да добави нещо, а числата,
+          заради които отваря екрана, бяха избутани надолу. Мястото ѝ е при
+          онова, което тя пише: секцията, в която застава записаният ред.
+        -->
+        <section class="tablitsa-blok" data-blok="nov">
       <h2 class="lenta" translate="no">Нов ред с пари</h2>
       <table class="reshetka smetki nov" data-reshetka="dvizheniya">
         <thead><tr>${vsichkiKoloni.map(
@@ -1326,10 +1538,6 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
       </table>
       ${obyasnenie('Знакът решава страната: приходът е +, разходът е − (правило 16).')}
     </section>
-    <section class="smetki-tyalo" data-smetki>
-      <div class="smetki-blokove">
-        ${stranaHTML('prihod', fPrihod.sektsii, sborPrihod, fPrihod.broyVidimi, fPrihod.broyVsichki)}
-        ${stranaHTML('razhod', fRazhod.sektsii, sborRazhod, fRazhod.broyVidimi, fRazhod.broyVsichki)}
         ${bezDataHTML()}
         ${razlikiteHTML()}
         <section class="tablitsa-blok" data-blok="vkarvane">
@@ -1361,6 +1569,9 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
         prihod_st: ddsSbor('prihod'),
         razhod_st: ddsSbor('razhod') + sborNaZadachite,
       }),
+      izbraniyatKoefitsient,
+      vidatNaPokazvaneto,
+      koloniteSPari,
     )}`
     }
     </div>`,
@@ -1373,6 +1584,21 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
       const nov = KOLONI.map((_kl, j) => filtar[j] ?? '');
       nov[Number(izbor.dataset['filtarSmetki'])] = izbor.value;
       zapomniEkranno(PAMET.filtar, nov);
+      k.prerisuvay();
+    });
+  }
+  // ═══ ДВЕТЕ МЕНЮТА НА КОЕФИЦИЕНТИТЕ · негово, 14.09 (запис 226) т.4 ═══
+  // Изборът се ПОМНИ · инак всяко прерисуване (запис на ред, смяна на такт)
+  // го връща на подразбирането и човек го избира отново при всяко движение.
+  for (const [beleg, kade] of [
+    ['izborKoefitsient', PAMET.koefitsient],
+    ['izborVid', PAMET.vidNaPokazvaneto],
+  ] as const) {
+    const izbor = k.tyalo.querySelector<HTMLSelectElement>(
+      beleg === 'izborKoefitsient' ? '[data-izbor-koefitsient]' : '[data-izbor-vid]',
+    );
+    izbor?.addEventListener('change', () => {
+      zapomniEkranno(kade, izbor.value);
       k.prerisuvay();
     });
   }

@@ -179,3 +179,114 @@ export function pokazatelite(
     },
   ];
 }
+
+/**
+ * ЕДИН КОЕФИЦИЕНТ, РАЗБИТ ПО КОЛОНИТЕ НА КАЛЕНДАРА.
+ *
+ * Негово, 14.09 (запис 226) т.4, ДОСЛОВНО: „…под него данните за коефициентите и
+ * да има падащо меню за избор на конкретен коефициент според периода и такта да
+ * избираш от падащо меню диаграма, графика или таблица(припомни си)."
+ *
+ * „Припомни си" сочи Заданието, и то го казва отдавна:
+ *   · `zadanie/CHISTO/11` **M11-06** · „Секция Отчети има точно ДВЕ падащи менюта:
+ *     (а) коефициент; (б) начин на показване."
+ *   · **M11-07** · „Менюто за показване има три стойности: Диаграма · Графика · Таблица."
+ *   · **M11-11** · „Тактът и периодът менят СТОЙНОСТИТЕ, не списъка."
+ *   · **M11-12** · „Коефициент, който не може да се смята за избрания такт и период,
+ *     се показва СИВ и казва защо. Не изчезва."
+ *
+ * ЗАЩО ОТ КОЛОНИТЕ, А НЕ ОТ `Smetki` НАНОВО. Сборът за всяка колона вече е сметнат
+ * веднъж — от него живее самият календар. Второ смятане би било втора истина и
+ * двете биха се разминали при първата промяна (правило 14). Тук се подава ГОТОВОТО
+ * и се дели.
+ *
+ * И НЕ ВСИЧКИ СЕ СМЯТАТ ПО КОЛОНА. „Среден приход на месец" е сметка ЗА ПЕРИОДА —
+ * на една колона тя е самата колона и числото не значи нищо; „Секции с движения"
+ * и „Движения" са брой, не пари. Те не се крият — казват защо не се чертаят
+ * (правило 12 · M11-12).
+ */
+
+/** Сборовете на ЕДНА колона от календара · цели центове, със знака. */
+export interface KolonaSPari {
+  /** каквото пише в главата ѝ · „сб 1" · „2026-09" */
+  readonly nadpis: string;
+  readonly prihod_st: number;
+  /** отрицателен (правило 16) */
+  readonly razhod_st: number;
+}
+
+/** Стойността на един коефициент в една колона. */
+export interface TochkaNaKoefitsienta {
+  readonly nadpis: string;
+  /** както се пише на екрана */
+  readonly dumi: string;
+  /** числото за чертане · `null`, когато не се смята (деление на нула) */
+  readonly chislo: number | null;
+}
+
+export interface RedNaKoefitsienta {
+  readonly klyuch: string;
+  readonly ime: string;
+  readonly formula: string;
+  /** празно, когато се чертае · инак КАЗВА защо не (правило 12) */
+  readonly zashtoNe: string;
+  readonly tochki: readonly TochkaNaKoefitsienta[];
+  /** пари ли са числата · решава дали се пишат с евро */
+  readonly pari: boolean;
+}
+
+/** Кои коефициенти се смятат по колона · останалите казват защо не. */
+const PO_KOLONA: readonly string[] = Object.freeze([
+  'prihod',
+  'razhod',
+  'rezultat',
+  'marzh',
+  'pokritie',
+  'razhod-kam-prihod',
+]);
+
+const ZASHTO_NE: Readonly<Record<string, string>> = Object.freeze({
+  'sredno-prihod': 'сметка за ЦЕЛИЯ период · на една колона тя е самата колона',
+  'sredno-razhod': 'сметка за ЦЕЛИЯ период · на една колона тя е самата колона',
+  'nay-goliam-prihod': 'сочи СЕКЦИЯ, не число по време',
+  'nay-goliam-razhod': 'сочи СЕКЦИЯ, не число по време',
+  sektsii: 'брой секции, не пари · няма какво да се чертае по такта',
+  dvizheniya: 'брой редове, не пари · няма какво да се чертае по такта',
+});
+
+export function koefitsientatPoKolona(
+  klyuch: string,
+  ime: string,
+  formula: string,
+  kolonite: readonly KolonaSPari[],
+): RedNaKoefitsienta {
+  const zashtoNe = ZASHTO_NE[klyuch] ?? (PO_KOLONA.includes(klyuch) ? '' : 'не се смята по такт');
+  if (zashtoNe !== '') return { klyuch, ime, formula, zashtoNe, tochki: [], pari: false };
+
+  const pari = klyuch === 'prihod' || klyuch === 'razhod' || klyuch === 'rezultat';
+  const tochki = kolonite.map((k) => {
+    const razhodPolozhitelen = -k.razhod_st;
+    const [chislo, dumi] = ((): [number | null, string] => {
+      if (klyuch === 'prihod') return [k.prihod_st, pishi(k.prihod_st)];
+      if (klyuch === 'razhod') return [k.razhod_st, pishi(k.razhod_st)];
+      if (klyuch === 'rezultat') {
+        const r = k.prihod_st + k.razhod_st;
+        return [r, pishi(r)];
+      }
+      if (klyuch === 'marzh') {
+        if (k.prihod_st === 0) return [null, '—'];
+        const r = k.prihod_st + k.razhod_st;
+        return [(r / k.prihod_st) * 100, dyal(r, k.prihod_st)];
+      }
+      if (klyuch === 'pokritie') {
+        if (razhodPolozhitelen === 0) return [null, '—'];
+        return [(k.prihod_st / razhodPolozhitelen) * 100, dyal(k.prihod_st, razhodPolozhitelen)];
+      }
+      // 'razhod-kam-prihod'
+      if (k.prihod_st === 0) return [null, '—'];
+      return [(razhodPolozhitelen / k.prihod_st) * 100, dyal(razhodPolozhitelen, k.prihod_st)];
+    })();
+    return { nadpis: k.nadpis, dumi, chislo };
+  });
+  return { klyuch, ime, formula, zashtoNe: '', tochki, pari };
+}

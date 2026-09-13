@@ -828,6 +828,83 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
     ),
     true,
   );
+  // ══ 4м · ДВЕТЕ МЕНЮТА НА КОЕФИЦИЕНТИТЕ · негово, 14.09 (запис 226) т.4 ═════
+  //
+  // „…под него данните за коефициентите и да има падащо меню за избор на
+  // конкретен коефициент според периода и такта да избираш от падащо меню
+  // диаграма, графика или таблица(припомни си)."
+  //
+  // „Припомни си" е Заданието: `zadanie/CHISTO/11` M11-06 („точно ДВЕ падащи
+  // менюта"), M11-07 („три стойности: Диаграма · Графика · Таблица"), M11-22
+  // („изписва ФОРМУЛАТА на един ред") и M11-12 („коефициент, който не може да се
+  // смята за избрания такт, се показва СИВ и КАЗВА защо. Не изчезва").
+  razdel = '4м · двете менюта на коефициентите';
+  await p.click('[data-podtab="smetki"]');
+  await p.waitForSelector('[data-sektsiya="pokazateli"]');
+  proveri(
+    'ДВЕ менюта · и трите стойности на второто',
+    `${await p.$$eval('[data-izbor-koefitsient]', (es) => es.length)} · ${await p.$$eval('[data-izbor-vid]', (es) => es.length)} · ${(
+      await p.$$eval('[data-izbor-vid] option', (es) => es.map((e) => e.textContent?.trim() ?? ''))
+    ).join(' · ')}`,
+    '1 · 1 · Таблица · Графика · Диаграма',
+  );
+  // ОБХВАТЪТ ПЪРВО · нулата долу значи нещо само ако менюто е видяло коефициенти
+  proveri(
+    'менюто носи ВСИЧКИТЕ дванайсет показателя',
+    await p.$$eval('[data-izbor-koefitsient] option', (es) => es.length),
+    12,
+  );
+  proveri(
+    'ФОРМУЛАТА стои на един ред · за избрания',
+    await tekstNa(p, '[data-koefitsient-formula]'),
+    'Резултат · приход минус разход · положителен е печалба, отрицателен е загуба',
+  );
+  await p.selectOption('[data-izbor-vid]', 'diagrama');
+  await p.waitForSelector('.chertezh .stalb');
+  const kolonite = await p.$$eval(
+    '[data-reshetka="prihod"] thead tr.glavi th.takt',
+    (es) => es.length,
+  );
+  proveri(
+    'ДИАГРАМА · по едно стълбче на колона от календара, нито едно повече',
+    await p.$$eval('.chertezh .stalb', (es) => es.length),
+    kolonite,
+  );
+  await p.selectOption('[data-izbor-vid]', 'grafika');
+  await p.waitForSelector('.chertezh .liniya');
+  proveri(
+    'ГРАФИКА · една линия и по една точка на колона',
+    `линии ${await p.$$eval('.chertezh .liniya', (es) => es.length)} · точки ${await p.$$eval('.chertezh .tochka', (es) => es.length)}`,
+    `линии 1 · точки ${String(kolonite)}`,
+  );
+  await p.selectOption('[data-izbor-vid]', 'tablitsa');
+  await p.waitForSelector('[data-reshetka="koefitsient"]');
+  proveri(
+    'ТАБЛИЦА · глава и ред със същия брой клетки · името плюс колоните',
+    `${await p.$$eval('[data-reshetka="koefitsient"] thead th', (es) => es.length)} · ${await p.$$eval('[data-reshetka="koefitsient"] tbody td', (es) => es.length)}`,
+    `${String(kolonite + 1)} · ${String(kolonite + 1)}`,
+  );
+  // M11-12 · онова, което не се смята по такт, НЕ ИЗЧЕЗВА · то казва защо
+  await p.selectOption('[data-izbor-koefitsient]', 'dvizheniya');
+  await p.waitForSelector('[data-koefitsient-siv]');
+  proveri(
+    'коефициент, който не се смята по такт, КАЗВА защо · и не изчезва',
+    `${(await tekstNa(p, '[data-koefitsient-siv]')).includes('брой редове, не пари')} · ${await p.$$eval('[data-pokazatel="dvizheniya"]', (es) => es.length)}`,
+    'true · 1',
+  );
+  // и ИЗБОРЪТ СЕ ПОМНИ · инак всяко прерисуване го връща на подразбирането
+  await p.click('[data-podtab="nap"]');
+  await p.waitForSelector('[data-dds-forma]');
+  await p.click('[data-podtab="smetki"]');
+  await p.waitForSelector('[data-sektsiya="pokazateli"]');
+  proveri(
+    'изборът се ПОМНИ през прерисуване',
+    await p.$eval('[data-izbor-koefitsient]', (e) => (e as HTMLSelectElement).value),
+    'dvizheniya',
+  );
+  await p.selectOption('[data-izbor-koefitsient]', 'rezultat');
+  await p.waitForSelector('[data-reshetka="koefitsient"]');
+
   // ══ 4л · ПОКАЗАТЕЛИТЕ КАЗВАТ СЪЩОТО · негово, запис 213 т.2 ═════════════
   //
   // „Тези сборни за Задачи и сметки Бюджето УЧАСТВАТ в сметките на Коефициентите
