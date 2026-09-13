@@ -19,6 +19,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { VREME_NA_MASHINATA } from '../stroezh/vreme-na-mashinata.js';
 
 const MASHINA = resolve('stroezh/dnevnik.mjs');
 const DEN = '2026-09-11';
@@ -26,7 +27,7 @@ const DEN = '2026-09-11';
 function pusni(koren: string, argv: string[]) {
   return spawnSync(process.execPath, [MASHINA, ...argv], {
     encoding: 'utf8',
-    timeout: 120_000,
+    timeout: VREME_NA_MASHINATA,
     env: { ...process.env, DNEVNIK_KOREN: koren, DNEVNIK_DEN: DEN },
   });
 }
@@ -65,7 +66,7 @@ describe('дневникът · тринайсетата порта', () => {
   it('машината минава върху живото дърво · денят има запис, думите му имат дом', () => {
     const r = spawnSync(process.execPath, [MASHINA, '--proveri'], {
       encoding: 'utf8',
-      timeout: 120_000,
+      timeout: VREME_NA_MASHINATA,
     });
     // ПЪРВО обхватът: нула находки при нула проверки значи „не съм гледал" (обход Й)
     expect(r.stdout).toMatch(/проверки: 9 · пуснати: \d+/);
@@ -164,7 +165,7 @@ describe('дневникът · тринайсетата порта', () => {
     // в началото на промпта си и трябва да се побере там
     const r = spawnSync(process.execPath, [MASHINA, '--za-agenta'], {
       encoding: 'utf8',
-      timeout: 30_000,
+      timeout: VREME_NA_MASHINATA,
     });
     expect(r.status, r.stdout).toBe(0);
     const redove = r.stdout.trimEnd().split('\n');
@@ -178,7 +179,7 @@ describe('дневникът · тринайсетата порта', () => {
   it('следващият номер на коммит се СМЯТА от историята · max + 1 от не-merge заглавията', () => {
     const r = spawnSync(process.execPath, [MASHINA, '--sledvasht-nomer'], {
       encoding: 'utf8',
-      timeout: 30_000,
+      timeout: VREME_NA_MASHINATA,
     });
     expect(r.status).toBe(0);
     // 48 е коммитът на 10.09 (2a59f14) · оттам нататък само нагоре

@@ -27,6 +27,7 @@ import {
   type ButonNaProzoretsa,
   butoniBezTema,
   OTKRITITE,
+  SVALENI_OT_EKRANA,
   TEMI_NA_BUTONITE,
 } from '../../src/model/osnova.js';
 import {
@@ -43,23 +44,30 @@ import { h, type Zapechatan } from './shablon.js';
 /**
  * Четвъртият ред · менютата по теми, после откритите.
  *
- * `dopalnitelno` влиза В Създаването: там живеят бутоните на прозореца, които
- * не идват от каталога му (в Сметки — „Добави ред с пари"), а създаването е
- * една тема навсякъде, не две на различни места.
+ * ДОТУК ТУК ИМАШЕ ТРЕТИ ПАРАМЕТЪР `dopalnitelno` — бутоните на прозореца, които
+ * не идват от каталога му (в Сметки „Добави ред с пари"). Той влизаше в темата
+ * „Създаване", а нея вече я няма (негово, 13.09 · запис 210). Параметърът е
+ * махнат, вместо да остане и да не рисува нищо: незабележимо мълчащ параметър е
+ * по-лош от липсващ, защото изглежда като работеща възможност.
+ *
+ * Домът на тези бутони е ДЕСНИЯТ БУТОН —
+ * `zakachiSazdavanetoOtDesniyaButon(k, dopalnitelni)`.
  */
 export function lentaNaDeystviyata(
   butoni: readonly ButonNaProzoretsa[],
   butonHTML: (b: ButonNaProzoretsa) => Zapechatan,
-  dopalnitelno?: Zapechatan,
 ): Zapechatan {
-  const po = new Map(butoni.map((b) => [b.klyuch, b]));
+  // СВАЛЕНИТЕ не влизат в картата · те живеят в Модела заради Книгата, но
+  // екранът не ги рисува (негово, 13.09 · запис 210). Филтърът е ТУК, на едно
+  // място, вместо по едно `if` във всеки прозорец.
+  const svaleni = new Set(SVALENI_OT_EKRANA);
+  const po = new Map(butoni.filter((b) => !svaleni.has(b.klyuch)).map((b) => [b.klyuch, b]));
   const temi = TEMI_NA_BUTONITE.map((t) => {
     const vatre = t.klyuchove.map((klyuch) => po.get(klyuch)).filter((b) => b !== undefined);
-    const oshte = t.klyuch === 'sazdavane' ? dopalnitelno : undefined;
-    if (vatre.length === 0 && oshte === undefined) return h``;
+    if (vatre.length === 0) return h``;
     return h`<details class="tema" data-tema="${t.klyuch}">
       <summary class="malak">${t.ime}</summary>
-      <div class="tochki">${vatre.map(butonHTML)}${oshte ?? ''}</div>
+      <div class="tochki">${vatre.map(butonHTML)}</div>
     </details>`;
   });
   const otkriti = [...OTKRITITE, ...butoniBezTema(butoni)]

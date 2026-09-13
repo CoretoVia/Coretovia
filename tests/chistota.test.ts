@@ -22,6 +22,7 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { VREME_NA_MASHINATA } from '../stroezh/vreme-na-mashinata.js';
 
 const KOREN = fileURLToPath(new URL('..', import.meta.url));
 const OBHODAT = join(KOREN, 'stroezh', 'chistota.mjs');
@@ -32,7 +33,7 @@ function pusni(koren?: string): { kod: number; izhod: string } {
   try {
     const izhod = execFileSync('node', [OBHODAT], {
       encoding: 'utf8',
-      timeout: 55_000,
+      timeout: VREME_NA_MASHINATA,
       env: koren === undefined ? process.env : { ...process.env, CHISTOTA_KOREN: koren },
     });
     return { kod: 0, izhod };

@@ -63,7 +63,12 @@ async function main(): Promise<void> {
     await skelet.blok2(ctx);
   } catch (greshka) {
     broyach.dobaviNahodka({
-      razdel: broyach.posledenRazdel,
+      // „СЛЕД", НЕ „В" · `posledenRazdel` се пише при ПРОВЕРКА, тъй че раздел,
+      // който се спъне преди първата си проверка, би се приписал на предишния.
+      // Точно това стана на 13.09: находката сочеше 3д, а клекът беше в 3е, и
+      // търсенето тръгна от грешното място. Диагностика, която сочи погрешно, е
+      // по-лоша от липсваща (правило 12).
+      razdel: `след ${broyach.posledenRazdel}`,
       kakvo: 'проходът се спъна',
       vidyano: String(greshka).split('\n')[0] ?? String(greshka),
       ochakvano: 'да мине',

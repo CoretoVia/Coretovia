@@ -204,41 +204,71 @@ export function svetofarNaSroka(srok: string, dnes: string): Svetofar {
 }
 
 /**
- * КОЕ СЕ ВИЖДА · таблицата, диаграмата, или двете.
+ * ОБОБЩАВАЩАТА ЛЕНТА · родителят носи обхвата на децата си.
  *
- * Негово, 31.08, за таблицата на Ганта: „**Да и на двете места. Да може да се
- * крие.**" Скриването е ЛИЧЕН избор на екрана, не решение на кода; и двете
- * скрити наведнъж оставят празна секция, в която човекът вижда изчезнала
- * работа, а не скрит изглед — затова последното видимо не се скрива, и
- * отказът се КАЗВА (правило 12). Скриването пипа САМО екрана: нито сбор, нито
- * Журнал, нито износ (правило 18).
+ * Негово, 13.09 (запис 210), ДОСЛОВНО: „Обърни внимание да направиш **календара
+ * да обхваща всички редове** и в Управлени и в Сметки." И преди това, 11.09
+ * (запис 195 т.2): „**Ганта обхваща всички редове изцяло** и се сливат двете."
+ *
+ * ДОТУК ИМОТЪТ, ОБЕКТЪТ И БИЗНЕСЪТ НЯМАХА НИТО ЕДНА КЛЕТКА в календара — не
+ * защото е решено така, а защото лентата се смяташе само за задача, а родителят
+ * няма свои дати. И кодът дори не го БРОЕШЕ: празният ред просто мълчеше.
+ *
+ * Сега родителят получава лентата, която му се полага в MS Project, откъдето той
+ * сам взе образеца (запис 194: „както изглежда в МС Проджект"): **от най-ранното
+ * начало до най-късния край на потомците си**. Тя не е негова дата — тя е
+ * ОБХВАТЪТ на работата под него, и точно това човек търси, когато свие дървото.
+ *
+ * НИВОТО РЕШАВА КОЙ В КОГО СЕ ВЛИВА. Задачата (ниво 2) влиза в Обекта над себе
+ * си (ниво 1) И в Имота над него (ниво 0) — затова стекът, а не проста карта
+ * „родител → деца": обхватът се качва през всички отворени нива наведнъж.
+ *
+ * Ред без дати не разширява нищо. Родител без нито едно дете с дата не получава
+ * лента и не се преструва, че има.
  */
-export interface KoeSeVizhda {
-  readonly tablitsa: boolean;
-  readonly diagrama: boolean;
+export interface RedZaObobshtavane {
+  /** 0 = Имот · 1 = Обект или Бизнес · 2 = задача · по-голямото се влива в по-малкото */
+  readonly nivo: number;
+  readonly ot: string;
+  readonly do: string;
 }
 
-export type KoePrevkluchva = 'tablitsa' | 'diagrama';
-
-export interface Prevkluchvane {
-  readonly sled: KoeSeVizhda;
-  /** празно, когато е станало · иначе ПРИЧИНАТА с думи */
-  readonly otkaz: string;
+export interface Obhvat {
+  readonly ot: string;
+  readonly do: string;
 }
 
-export function prevkluchi(sega: KoeSeVizhda, koe: KoePrevkluchva): Prevkluchvane {
-  const sled = { ...sega, [koe]: !sega[koe] };
-  if (!sled.tablitsa && !sled.diagrama) {
-    return Object.freeze({
-      sled: sega,
-      otkaz: 'Последният изглед не се скрива — иначе секцията остава празна.',
-    });
+/**
+ * Обхватите на родителите · КЛЮЧЪТ Е ИНДЕКСЪТ на реда в подадения списък.
+ *
+ * Индекс, а не `id`: един и същи имот не се повтаря в дървото, но индексът е
+ * това, което викащият вече има под ръка, и не иска втора карта, за да го върже.
+ */
+export function obobshtenite(redove: readonly RedZaObobshtavane[]): ReadonlyMap<number, Obhvat> {
+  const izlaz = new Map<number, Obhvat>();
+  /** отворените родители · индексът и нивото им, най-външният отпред */
+  const stek: { i: number; nivo: number }[] = [];
+
+  for (const [i, r] of redove.entries()) {
+    // затваряме всеки родител, който е на СЪЩОТО или по-дълбоко ниво: той вече
+    // не може да получи нови деца, защото този ред не е под него
+    while (stek.length > 0 && stek[stek.length - 1]!.nivo >= r.nivo) stek.pop();
+
+    const imaDati = r.ot !== '' || r.do !== '';
+    if (imaDati) {
+      const ot = r.ot === '' ? r.do : r.ot;
+      const doo = r.do === '' ? r.ot : r.do;
+      for (const otvoren of stek) {
+        const sega = izlaz.get(otvoren.i);
+        izlaz.set(otvoren.i, {
+          ot: sega === undefined || ot < sega.ot ? ot : sega.ot,
+          do: sega === undefined || doo > sega.do ? doo : sega.do,
+        });
+      }
+    }
+
+    // самият ред става родител за следващите по-дълбоки
+    stek.push({ i, nivo: r.nivo });
   }
-  return Object.freeze({ sled: Object.freeze(sled), otkaz: '' });
-}
-
-/** Думите на бутона · казват какво ще СТАНЕ, не какво е сега. */
-export function dumataNaButona(sega: KoeSeVizhda, koe: KoePrevkluchva): string {
-  const ime = koe === 'tablitsa' ? 'Таблица' : 'Диаграма';
-  return `${sega[koe] ? 'Скрий' : 'Покажи'} ${ime}`;
+  return izlaz;
 }

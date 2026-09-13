@@ -17,6 +17,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { chetiEkranno, snimkaNaEkrana, zapomniEkranno } from '../app/reshetka/pamet-ekran.js';
 import {
   dumataNaRezhima,
+  sastoyanietoNaRezhima,
   KLYUCHAT_NA_REZHIMA,
   obarniRezhima,
   parite,
@@ -88,11 +89,33 @@ describe('двата режима на календара', () => {
     expect(rezhimatSega()).toBe('pari');
   });
 
+  /**
+   * НЕ „Скрий/Покажи", А „Вкарай/Извади" · негово, 13.09 (запис 210): „СМетки
+   * отиват в Управление и Задачи отива в СМеки **с по един бутон се пуска и
+   * изклюва добавянето**."
+   *
+   * Разликата не е козметична. Скриването е поглед — нещото е там, но не се
+   * вижда. ДОБАВЯНЕТО е друго: чуждите редове или влизат в таблицата, или не
+   * влизат изобщо, и в Сметки изваденото излиза И ОТ СМЕТКАТА (запис 163).
+   */
   it('бутонът казва какво ще СТАНЕ · всеки прозорец назовава своето', () => {
-    expect(dumataNaRezhima('Сметки')).toBe('Скрий Сметки');
-    expect(dumataNaRezhima('Задачи')).toBe('Скрий Задачи');
+    expect(dumataNaRezhima('Сметки')).toBe('Извади Сметки');
+    expect(dumataNaRezhima('Задачи')).toBe('Извади Задачи');
     obarniRezhima();
-    expect(dumataNaRezhima('Сметки')).toBe('Покажи Сметки');
-    expect(dumataNaRezhima('Задачи')).toBe('Покажи Задачи');
+    expect(dumataNaRezhima('Сметки')).toBe('Вкарай Сметки');
+    expect(dumataNaRezhima('Задачи')).toBe('Вкарай Задачи');
+  });
+
+  /**
+   * И СЪСТОЯНИЕТО с думи · правило 12: изключеното се КАЗВА.
+   *
+   * Бутонът обещава какво ще стане; редът под таблицата казва какво Е. Без
+   * второто човек, който не помни коя посока е натиснал, търси редове, които
+   * сам е извадил.
+   */
+  it('редът под таблицата казва КАКВО Е, не какво ще стане', () => {
+    expect(sastoyanietoNaRezhima('Сметки')).toBe('Сметки са вътре');
+    obarniRezhima();
+    expect(sastoyanietoNaRezhima('Сметки')).toBe('Сметки са извадени');
   });
 });

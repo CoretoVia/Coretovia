@@ -107,12 +107,34 @@ export function tochkiteNaSazdavaneto(k: KonteksNaEkrana): readonly Tochka[] {
   return tochki;
 }
 
-function pokazhiSazdavaneto(k: KonteksNaEkrana, x: number, y: number): void {
-  pokazhiMenyu(x, y, tochkiteNaSazdavaneto(k));
-}
-
-/** Отваря менюто под самия бутон · двата прозореца го правеха с едни и същи редове. */
-export function sazdavaneOtButona(k: KonteksNaEkrana, el: HTMLElement): void {
-  const r = el.getBoundingClientRect();
-  pokazhiSazdavaneto(k, r.left, r.bottom);
+/**
+ * СЪЗДАВАНЕТО ОТ ДЕСНИЯ БУТОН · и точно затова — върху ПРАЗНОТО.
+ *
+ * Негово, 13.09 (запис 210): „Махни всичките бутони за добавяне и скриване."
+ * `zadanie/03` B5 казва къде отива махнатото: „Да може тук да се ползва десния
+ * бутон и да се дава опция за Всеки Имот или Обект да се избира и добавят тези
+ * 3 функции за добавяне."
+ *
+ * ВЪРХУ РЕД го закача менюто на реда. Тук се закача другата половина, без
+ * която първата е капан: **десен бутон върху празно място**. Инак човек с
+ * празна книга няма нито един ред, върху който да натисне — и няма как да
+ * създаде първия си имот. Двата слушателя не се бият: този мълчи, когато под
+ * курсора има ред, а онзи — когато няма.
+ *
+ * `dopalnitelni` са пунктовете, които са СВОИ на прозореца (в Сметки — „Добави
+ * ред с пари"). Те слизат тук от лентата заедно с останалите, вместо да
+ * изчезнат тихо с темата, в която живееха.
+ */
+export function zakachiSazdavanetoOtDesniyaButon(
+  k: KonteksNaEkrana,
+  dopalnitelni: (() => readonly Tochka[]) | undefined = undefined,
+): void {
+  k.tyalo.addEventListener('contextmenu', (e) => {
+    if ((e.target as HTMLElement).closest('tr.red[data-id]')) return;
+    e.preventDefault();
+    pokazhiMenyu(e.clientX, e.clientY, [
+      ...tochkiteNaSazdavaneto(k),
+      ...(dopalnitelni === undefined ? [] : dopalnitelni()),
+    ]);
+  });
 }

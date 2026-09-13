@@ -42,10 +42,8 @@ import {
   stoynostiteNaKolonata,
 } from '../../src/smetach/filtar.js';
 import {
-  dumataNaButona,
-  type KoeSeVizhda,
   lentaNa,
-  prevkluchi,
+  obobshtenite,
   broyPokrivashti,
   sboroveVKolonite,
   svetofarNaSroka,
@@ -84,12 +82,20 @@ import {
   zakachiTakta,
   zakachiTemite,
 } from '../reshetka/lenta-deystviya.js';
-import { sazdavaneOtButona } from '../reshetka/sazdavaneto.js';
+import {
+  tochkiteNaSazdavaneto,
+  zakachiSazdavanetoOtDesniyaButon,
+} from '../reshetka/sazdavaneto.js';
 import { otvoriModel, zapaziModela } from '../reshetka/modeli.js';
 import { podskazka, podskazkaSDumi } from '../reshetka/podskazka.js';
 import { h, sloji, type Zapechatan } from '../reshetka/shablon.js';
 import { chetiEkranno, zapomniEkranno } from '../reshetka/pamet-ekran.js';
-import { dumataNaRezhima, obarniRezhima, parite } from '../reshetka/rezhim.js';
+import {
+  dumataNaRezhima,
+  obarniRezhima,
+  parite,
+  sastoyanietoNaRezhima,
+} from '../reshetka/rezhim.js';
 import { pokazhiGreshka } from '../reshetka/redaktsiya.js';
 import { kletkaHTML, zakachiReshetkata } from '../reshetka/reshetka.js';
 import {
@@ -104,7 +110,6 @@ const PAMET = Object.freeze({
   smetki: 'upravlenie.smetki',
   takt: 'upravlenie.takt',
   period: 'upravlenie.period',
-  vizhda: 'upravlenie.vizhda',
   dnes: 'upravlenie.dnes',
 });
 const TABLITSA = 'zadachi';
@@ -190,12 +195,22 @@ function taktKletkiHTML(
         tuk ? r.ime : ''
       }</td>`;
     });
-  const lenta = r.vid === 'zadacha' ? lentaNa({ id: r.id, ot: r.ot, do: r.do }, koloni) : null;
+  // И РОДИТЕЛЯТ НОСИ ЛЕНТА · негово, 13.09 (запис 210): „календара да обхваща
+  // ВСИЧКИ редове". Неговата е ОБОБЩАВАЩА — от най-ранното начало до най-късния
+  // край на потомците му (`obobshtenite` в `gant.ts`), както е в MS Project,
+  // откъдето той сам взе образеца (запис 194). Дотук тези редове бяха празни
+  // през целия календар и кодът дори не ги броеше.
+  const lenta =
+    r.ot === '' && r.do === '' ? null : lentaNa({ id: r.id, ot: r.ot, do: r.do }, koloni);
   const svetofar = r.vid === 'zadacha' && r.do !== '' ? svetofarNaSroka(r.do, dnes) : null;
   return koloni.map((kol, i) => {
     const vatre = lenta !== null && i >= lenta.ot && i < lenta.ot + lenta.broy;
     if (!vatre) return h`<td class="takt${kol.dnes ? ' dnes' : ''}"></td>`;
-    const klas = `takt lenta ${svetofar ?? 'normalno'}${r.speshno ? ' speshno' : ''}${kol.dnes ? ' dnes' : ''}`;
+    // ОБОБЩАВАЩАТА ЛЕНТА е друга на вид: тя не е работа, а ОБХВАТ на работата
+    // под себе си — затова е тънка, без светофар и без текст. Светофарът пази
+    // срока на ЕДНА задача; върху сбор от много той не значи нищо.
+    const obobshtavashta = r.vid === 'roditel';
+    const klas = `takt lenta ${obobshtavashta ? 'obobshtavashta' : (svetofar ?? 'normalno')}${r.speshno ? ' speshno' : ''}${kol.dnes ? ' dnes' : ''}`;
     // РЕДАКЦИЯТА НА ВРЕМЕТО е тук · колоната „Дата" излезе от реда (запис 204),
     // и полето ѝ се мести там, където той сочи: върху лентата в календара.
     // Т33 · белегът се пише САМО когато редовете изобщо се редактират
@@ -206,7 +221,7 @@ function taktKletkiHTML(
           )}`
         : '';
     return h`<td class="${klas}" data-lenta="${r.id}"${redakt}>${
-      i === lenta.ot ? litseNaTakta(r.ime, byudzhet) : ''
+      obobshtavashta || i !== lenta.ot ? '' : litseNaTakta(r.ime, byudzhet)
     }</td>`;
   });
 }
@@ -511,7 +526,6 @@ export function narisuvayUpravlenie(k: KonteksNaEkrana): void {
   const dnes = chetiEkranno<string | null>(PAMET.dnes, null) ?? dnesNaMashinata;
   const takt = chetiEkranno<Takt>(PAMET.takt, 'mesets');
   const period = chetiEkranno<SvoyPeriod | null>(PAMET.period, null);
-  const vizhda = chetiEkranno<KoeSeVizhda>(PAMET.vizhda, { tablitsa: true, diagrama: true });
   /** РЕЖИМЪТ е общ с Сметки · един бутон там го върти и тук (запис 202) */
   const sPari = parite();
   const skriySmetki = !sPari;
@@ -548,6 +562,19 @@ export function narisuvayUpravlenie(k: KonteksNaEkrana): void {
       redove.push(redNaZadacha(o, redKato(tvZ, r.i), r.roditelId, oblik, speshnoNomer));
   }
   izsipi();
+  /**
+   * ОБОБЩАВАЩИТЕ ОБХВАТИ · негово, 13.09 (запис 210): „календара да обхваща
+   * всички редове". Имотът и Обектът нямат свои дати; техният обхват е онова,
+   * което стои под тях — задачите И движенията, защото и парите са работа във
+   * времето. Смята се ВЕДНЪЖ, върху целия списък, преди филтъра: обхватът на
+   * един Имот не бива да се мени според това какво е скрито на екрана.
+   */
+  const obhvatite = obobshtenite(redove.map((r) => ({ nivo: r.nivo, ot: r.ot, do: r.do })));
+  for (const [i, ob] of obhvatite) {
+    const r = redove[i];
+    if (r === undefined || r.vid !== 'roditel') continue;
+    redove[i] = { ...r, ot: ob.ot, do: ob.do };
+  }
   /** колко движения стоят в дървото · скритото се брои като нула, защото не е там */
   const broySmetki = redove.filter((r) => r.vid === 'dvizhenie').length;
   const zaFiltar: RedZaFiltar[] = redove.map((r) => ({ nivo: r.nivo, dumi: r.dumi }));
@@ -683,13 +710,11 @@ export function narisuvayUpravlenie(k: KonteksNaEkrana): void {
   const butonHTML = (b: ButonNaProzoretsa): Zapechatan => {
     const obshto = obshtotoNaButona(b, takt, period);
     if (obshto !== null) return obshto;
-    let duma = litse(b);
-    if (b.klyuch === 'skriy-tablitsa') duma = dumataNaButona(vizhda, 'tablitsa');
-    if (b.klyuch === 'skriy-diagrama') duma = dumataNaButona(vizhda, 'diagrama');
-    // ЕДИН бутон на прозорец (запис 193) · тук крие редовете на Сметки, не задачите.
-    // Режимът обаче е ОБЩ с Сметки (запис 202) — двата бутона въртят едно и също.
-    // Името на другия прозорец идва ОТ НЕГО (К1): тук то не се преписва.
-    if (b.klyuch === 'skriy-dela') duma = dumataNaRezhima(imetoNaSmetkite);
+    // ЕДИНСТВЕНИЯТ бутон на прозореца · негово, 13.09 (запис 210): „с по един
+    // бутон се пуска и изклюва добавянето". Режимът е ОБЩ с Сметки (запис 202) —
+    // двата бутона въртят едно и също. Името на другия прозорец идва ОТ НЕГО
+    // (К1): тук то не се преписва.
+    const duma = b.klyuch === 'skriy-dela' ? dumataNaRezhima(imetoNaSmetkite) : litse(b);
     return h`<button type="button" class="malak" data-buton-ekran="${b.klyuch}"${podskazka(b.pomosht)}>${duma}</button>`;
   };
 
@@ -702,9 +727,9 @@ export function narisuvayUpravlenie(k: KonteksNaEkrana): void {
     </div>
     <p class="greshka" data-greshka></p>
     <section class="upravlenie-tyalo" data-upravlenie>
-      <div class="tablitsa-blok darvo-blok" data-blok="darvo" ${vizhda.tablitsa ? '' : 'hidden'}>
+      <div class="tablitsa-blok darvo-blok" data-blok="darvo">
         <h2 class="lenta" translate="no">${p.lenti[1] ?? 'ОБЕКТИ'}</h2>
-        <table class="reshetka darvo${vizhda.diagrama ? '' : ' bez-taktove'}" data-reshetka="${TABLITSA}">
+        <table class="reshetka darvo" data-reshetka="${TABLITSA}">
           <thead>
             <tr class="glavi">${glavi}${glaviNaTaktovete}</tr>
             <tr class="podglavi">${podglavi}${podglaviNaTaktovete}</tr>
@@ -728,7 +753,7 @@ export function narisuvayUpravlenie(k: KonteksNaEkrana): void {
           smetkite.bezRoditel.length === 0
             ? ''
             : ` · без родител ${String(smetkite.bezRoditel.length)}`
-        }${skriySmetki ? ' · скрити' : ''}</p>
+        } · ${sastoyanietoNaRezhima(imetoNaSmetkite)}</p>
       </div>
       ${dumiteIIznosHTML(DUMI_OT_KNIGATA.upravlenie)}`,
   );
@@ -765,7 +790,7 @@ export function narisuvayUpravlenie(k: KonteksNaEkrana): void {
   for (const b of k.tyalo.querySelectorAll<HTMLButtonElement>('button[data-buton-ekran]')) {
     const opis = BUTONI_NA_UPRAVLENIE.find((x) => x.klyuch === b.dataset['butonEkran']);
     if (opis === undefined) continue;
-    b.addEventListener('click', () => deystvieNaButona(k, opis, b, vizhda, takt));
+    b.addEventListener('click', () => deystvieNaButona(k, opis, b, takt));
   }
 
   // ═══ дясното меню · задача под родител · изключи · върни · сторно ═══
@@ -801,8 +826,10 @@ export function narisuvayUpravlenie(k: KonteksNaEkrana): void {
         klas: 'zadacha nivo-2',
       });
     },
-    (izbran) =>
-      izbran.tablitsa === TABLITSA
+    // СЪЗДАВАНЕТО стои ПОСЛЕДНО · действията върху избрания ред са по-честите,
+    // а раждането на нов е по-рядкото (запис 210)
+    (izbran) => [
+      ...(izbran.tablitsa === TABLITSA
         ? []
         : [
             {
@@ -812,15 +839,19 @@ export function narisuvayUpravlenie(k: KonteksNaEkrana): void {
               zashto: 'идва с ход 11б · само при Строеж (негово B4)',
               deystvie: () => {},
             },
-          ],
+          ]),
+      ...tochkiteNaSazdavaneto(k),
+    ],
   );
+  // и върху ПРАЗНОТО · инак човек с празна книга няма ред, върху който да
+  // натисне, и първият му имот няма откъде да се роди (запис 210)
+  zakachiSazdavanetoOtDesniyaButon(k);
 }
 
 function deystvieNaButona(
   k: KonteksNaEkrana,
   b: ButonNaProzoretsa,
   el: HTMLButtonElement,
-  vizhda: KoeSeVizhda,
   takt: Takt,
 ): void {
   const d = b.deystvie;
@@ -860,22 +891,7 @@ function deystvieNaButona(
       obarniRezhima();
       k.prerisuvay();
       return;
-    case 'skriy-tablitsa':
-    case 'skriy-diagrama': {
-      const r = prevkluchi(vizhda, d.klyuch === 'skriy-tablitsa' ? 'tablitsa' : 'diagrama');
-      if (r.otkaz !== '') {
-        pokazhiGreshka(k.tyalo, r.otkaz);
-        return;
-      }
-      zapomniEkranno(PAMET.vizhda, r.sled);
-      k.prerisuvay();
-      return;
-    }
-    case 'dobavyane': {
-      // създаването е в ИЗСКАЧАЩ прозорец и е едно и също навсякъде (записи 193 · 195)
-      sazdavaneOtButona(k, el);
-      return;
-    }
+
     default:
       pokazhiGreshka(k.tyalo, `Бутонът „${litse(b)}" още няма действие.`);
   }

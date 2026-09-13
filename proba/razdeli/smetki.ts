@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { prochetiKniga } from '../../src/kniga/ooxml.ts';
+import type { Page } from 'playwright-core';
 import type { KonteksNaProhoda } from '../yadro/kontekst.ts';
 import {
   litseNaButona,
   natisniButon,
-  natisniVMenyu,
   poletaBezIme,
   tekstNa,
   tekstoveNa,
@@ -34,6 +34,21 @@ const EVRO_0 = '0,00 €';
 const MESETS = mesetsatNaProhoda();
 
 /** 4 · Сметки · трите реда залепено · движение · знакът · кешът · Книгата и вносът */
+/**
+ * НОВ РЕД С ПАРИ · от десния бутон, не от лентата.
+ *
+ * Негово, 13.09 (запис 210): „Махни всичките бутони за добавяне и скриване."
+ * Бутонът „Добави ред с пари" слезе заедно с останалото създаване; пунктът
+ * живее в десния бутон върху празно място, до Имот · Обект · Задача · Среща.
+ *
+ * Кликва се върху реда със сверката — той е извън таблицата, тъй че менюто
+ * излиза с пунктовете за създаване, а не с тези на избран ред.
+ */
+async function noviyatRedSPari(p: Page): Promise<void> {
+  await p.click('[data-sverka="smetki"]', { button: 'right' });
+  await p.waitForSelector('[data-menyu]');
+  await p.click('[data-menyu] [data-tochka="dobavi-dvizhenie"]');
+}
 export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
   const { stranitsa: p, broyach } = ctx;
   let razdel = '—';
@@ -70,49 +85,41 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
     await p.$$eval('[data-kesh-forma] input.pole', (es) => es.length),
     2,
   );
+  // ОСЕМ · негово, 13.09 (запис 210): „Махни всичките бутони за добавяне и
+  // скриване." Шестте слязоха от екрана, а „Добави ред с пари" отиде в десния
+  // бутон заедно с останалото създаване.
   proveri(
-    'третият ред са бутоните · неговите четиринайсет плюс „Добави ред с пари"',
+    'третият ред са осемте останали бутона',
     await p.$$eval(`${ZALEPENO} [data-buton-ekran].malak`, (es) => es.length),
-    14,
+    8,
+  );
+  proveri(
+    'старият бутон „Добави ред с пари" вече го няма в лентата',
+    await p.$$eval('[data-dobavi-dvizhenie]', (es) => es.length),
+    0,
   );
   proveri(
     'двете му ленти стоят една под друга',
     (await tekstoveNa(p, '[data-blok="prihod"] .lenta, [data-blok="razhod"] .lenta')).join(' · '),
     'ПРИХОД · Разходи',
   );
-  // ── Скрий ↔ Покажи · неговите два бутона, построени в резен 6к ──────
+  // ── ДВЕТЕ СТРАНИ ВЕЧЕ НЕ СЕ КРИЯТ ПООТДЕЛНО ─────────────────────────
   //
-  // Скриването пипа ЕКРАНА и нищо друго (правило 23: скритото ПАК се смята).
-  // Затова тук се гледа блокът, а не сборът — и накрая всичко се връща, за да
-  // не пренесе разделът състояние на следващия (памет на екрана е `ui.v1.`).
-  await natisniButon(p, 'skriy-prihodi');
-  await p.waitForFunction(() => document.querySelector('[data-blok="prihod"]') === null);
+  // Негово, 13.09 (запис 210): „Махни всичките бутони за добавяне и скриване."
+  // Двата бутона „Скрий Приходи/Разходи" слязоха; работата им я върши филтърът в
+  // главата на колоната (запис 192: „Филтър значи да ги СОРТИРАШ"), без да яде
+  // половин екран.
   proveri(
-    'Скрий Приходи маха блока · и Разходите остават',
-    await p.$$eval('[data-blok="prihod"], [data-blok="razhod"]', (es) => es.length),
-    1,
-  );
-  proveri(
-    'бутонът вече казва ПОКАЖИ · лицето му е действието, не миналото',
-    await litseNaButona(p, 'skriy-prihodi'),
-    'Покажи ПРИХОД',
-  );
-  // ПОСЛЕДНАТА видима страна не се скрива · и отказът се КАЗВА (правило 12)
-  await natisniButon(p, 'skriy-razhodi');
-  await p.waitForFunction(() =>
-    /Последната видима страна/.test(document.querySelector('[data-greshka]')?.textContent ?? ''),
-  );
-  proveri(
-    'последната видима страна НЕ се скрива · и отказът се казва',
-    await p.$$eval('[data-blok="prihod"], [data-blok="razhod"]', (es) => es.length),
-    1,
-  );
-  await natisniButon(p, 'skriy-prihodi');
-  await p.waitForSelector('[data-blok="prihod"]');
-  proveri(
-    'Покажи Приходи връща блока · двете страни са пак на екрана',
+    'Приходът и Разходът стоят и двата · няма бутон, който да ги крие',
     await p.$$eval('[data-blok="prihod"], [data-blok="razhod"]', (es) => es.length),
     2,
+  );
+  proveri(
+    'на лентата е останал ЕДИН превключвател · и той е неговият',
+    await p.$$eval(`${ZALEPENO} [data-buton-ekran^="skriy-"]`, (es) =>
+      es.map((e) => e.getAttribute('data-buton-ekran')).join(' · '),
+    ),
+    'skriy-dela',
   );
 
   proveri(
@@ -124,7 +131,7 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
 
   // ══ 4б · движение · знакът решава страната ═══════════════════════════
   razdel = '4б · движение';
-  await natisniVMenyu(p, '[data-dobavi-dvizhenie]');
+  await noviyatRedSPari(p);
   await p.waitForSelector('tr.chernova[data-chernova="dvizheniya"]');
   const ch = 'tr.chernova[data-chernova="dvizheniya"]';
   // родителят · първият Имот в списъка · оттук редът се вижда и в Управление (запис 193)
@@ -146,11 +153,11 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
   proveri(
     'сверката на секциите затваря',
     await tekstNa(p, '[data-sverka="smetki"]'),
-    'движения 1 · без секция 0 · сверката затваря',
+    'движения 1 · без секция 0 · сверката затваря · Задачите с бюджет са вътре',
   );
 
   // разход в ПРИХОДНА секция · отказът е с думи (правило 20)
-  await natisniVMenyu(p, '[data-dobavi-dvizhenie]');
+  await noviyatRedSPari(p);
   await p.waitForSelector(ch);
   await p.selectOption(`${ch} select[data-kolona="sektsiya"]`, '1');
   await p.selectOption(`${ch} select[data-kolona="funktsiya"]`, '3');
@@ -445,19 +452,23 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
   proveri(
     'сверката го брои и казва колко са без родител',
     await tekstNa(p, '[data-sverka="smetki"]'),
-    'сметки 1 от 2 · без родител 1',
+    'сметки 1 от 2 · без родител 1 · Сметки са вътре',
   );
   proveri(
-    'бутонът казва „Скрий Сметки", не „Скрий Дела"',
+    // ВКАРАЙ ↔ ИЗВАДИ, не „Скрий/Покажи" · негово, 13.09 (запис 210): „с по един
+    // бутон се пуска и изклюва ДОБАВЯНЕТО". Скриването е поглед; добавянето решава
+    // дали чуждите редове изобщо влизат — и в Сметки изваденото излиза и от
+    // сметката (запис 163).
+    'бутонът казва „Извади Сметки", защото пуска и спира ДОБАВЯНЕТО',
     await litseNaButona(p, 'skriy-dela'),
-    'Скрий Сметки',
+    'Извади Сметки',
   );
   await natisniButon(p, 'skriy-dela');
   await p.waitForFunction(() => document.querySelectorAll('tr.red.dvizhenie').length === 0);
   proveri(
     'натиснат · редовете ги няма и сверката го КАЗВА',
     `${await tekstNa(p, '[data-sverka="smetki"]')} · ${await litseNaButona(p, 'skriy-dela')}`,
-    'сметки 0 от 2 · без родител 1 · скрити · Покажи Сметки',
+    'сметки 0 от 2 · без родител 1 · Сметки са извадени · Вкарай Сметки',
   );
   await natisniButon(p, 'skriy-dela');
   await p.waitForSelector('tr.red.dvizhenie');
@@ -489,21 +500,25 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
   proveri(
     'СЪЩИЯТ режим е стигнал и до Сметки · секцията на задачите я няма',
     `${await litseNaButona(p, 'skriy-dela')} · секции ${await p.$$eval('[data-sbor-zadachi]', (es) => es.length)}`,
-    'Покажи Задачи · секции 0',
+    'Вкарай Задачи · секции 0',
   );
   await natisniButon(p, 'skriy-dela');
   await p.waitForSelector('[data-sbor-zadachi]');
   proveri(
-    'върнат в ПАРИ от бутона на Сметки · в календара стои БЮДЖЕТЪТ, не текстът',
+    // И ИМЕТО, И ЧИСЛОТО · негово, 12.09 (запис 201): „Когато има едновременно и
+    // бюджет и текст на задачата да се показват и двете в едно и също поле."
+    // Коментарът в кода го обещаваше от същия ден, а извикването не подаваше името
+    // — поправено на 13.09 заедно с останалите редове без календар.
+    'върнат в ПАРИ от бутона на Сметки · клетката носи И името, И бюджета',
     await p.$eval('tr.red.zadacha td.takt.evro', (e) => (e as HTMLElement).innerText.trim()),
-    EVRO_MINUS_250000,
+    `Сондаж · ${EVRO_MINUS_250000}`,
   );
   await p.goto(`${ADRES}#/upravlenie`);
   await p.waitForSelector('tr.red.dvizhenie');
   proveri(
     'и бутонът в Управление се е върнал заедно с него · един режим, два бутона',
     await litseNaButona(p, 'skriy-dela'),
-    'Скрий Сметки',
+    'Извади Сметки',
   );
 
   // ══ 4и · ВРЕМЕТО НЕ Е КОЛОНА · то е позиция в календара ══════════════

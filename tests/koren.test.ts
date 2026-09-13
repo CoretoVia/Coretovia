@@ -18,6 +18,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { VREME_NA_MASHINATA } from '../stroezh/vreme-na-mashinata.js';
 
 /** Какво има право да стои в корена · всяко ново име влиза ТУК, съзнателно. */
 const POZVOLENI = Object.freeze([
@@ -49,7 +50,7 @@ function darvo(koren: string) {
   const pusni = (argv: string[]) =>
     spawnSync(process.execPath, [resolve('stroezh/karta.mjs'), ...argv], {
       encoding: 'utf8',
-      timeout: 120_000,
+      timeout: VREME_NA_MASHINATA,
       env: { ...process.env, KARTA_KOREN: koren },
     });
   return { koren, pusni };
@@ -63,7 +64,7 @@ describe('коренът на хранилището', () => {
     const izhod = execFileSync('git', ['ls-files', '--full-name'], {
       cwd: fileURLToPath(new URL('..', import.meta.url)),
       encoding: 'utf8',
-      timeout: 55_000,
+      timeout: VREME_NA_MASHINATA,
     });
     const vsichki = izhod.split('\n').filter((r) => r !== '');
     // ПЪРВО броят: празен изход би направил всяко следващо твърдение празно и
@@ -97,7 +98,7 @@ describe('регистърът на въпросите · десетата по�
   it('машината минава · нула въпроса без дом и нула отговорени, които още се питат', () => {
     const r = spawnSync(process.execPath, ['stroezh/registar.mjs', '--proveri'], {
       encoding: 'utf8',
-      timeout: 120_000,
+      timeout: VREME_NA_MASHINATA,
     });
     expect(r.stdout).toMatch(/видени: \d+ документа/);
     expect(r.status, r.stdout + r.stderr).toBe(0);
@@ -119,7 +120,7 @@ describe('регистърът на въпросите · десетата по�
     const pusni = (argv: string[]) =>
       spawnSync(process.execPath, [resolve('stroezh/registar.mjs'), ...argv], {
         encoding: 'utf8',
-        timeout: 120_000,
+        timeout: VREME_NA_MASHINATA,
         env: { ...process.env, REGISTAR_KOREN: koren },
       });
     const r = pusni(['--proveri']);
@@ -172,7 +173,7 @@ describe('регистърът на въпросите · десетата по�
     const pusni = () =>
       spawnSync(process.execPath, [resolve('stroezh/registar.mjs'), '--proveri'], {
         encoding: 'utf8',
-        timeout: 120_000,
+        timeout: VREME_NA_MASHINATA,
         env: { ...process.env, REGISTAR_KOREN: koren },
       });
 
@@ -210,7 +211,7 @@ describe('картата · единайсетата порта', () => {
   it('картата е сверена с дървото · и ВСЕКИ документ носи шапка на ред 3', () => {
     const r = spawnSync(process.execPath, ['stroezh/karta.mjs', '--proveri'], {
       encoding: 'utf8',
-      timeout: 120_000,
+      timeout: VREME_NA_MASHINATA,
     });
     expect(r.stdout).toMatch(/описани документи: \d+/);
     expect(r.stdout).toMatch(/шапки: \d+ документа · находки 0/);
@@ -308,7 +309,7 @@ describe('протоколът · дванайсетата порта', () => {
     const pusni = (argv: string[]) =>
       spawnSync(process.execPath, [resolve('stroezh/protokol.mjs'), ...argv], {
         encoding: 'utf8',
-        timeout: 120_000,
+        timeout: VREME_NA_MASHINATA,
         env: { ...process.env, PROTOKOL_KOREN: koren },
       });
     const tsyal =
