@@ -33,6 +33,7 @@ import {
 import { napraviZapisvach } from '../src/yadro/zapis.js';
 import type { KonteksNaEkrana } from './kontekst.js';
 import { narisuvayProzorets } from './prozorets/prozortsite.js';
+import { pokazhiOtryazanoto, zalepiGlavata } from './reshetka/kolonite.js';
 import { zatvoriMenyuto } from './reshetka/menyu.js';
 import {
   izborNaStepenHTML,
@@ -380,6 +381,20 @@ async function tragni(ekran: HTMLElement): Promise<void> {
     tyalo.className = 'prozorets-tyalo';
     glavnoTyalo.replaceChildren(tyalo);
     narisuvayProzorets(klyuch, k);
+    /**
+     * ЗА ВСЕКИ ПРОЗОРЕЦ, НЕ САМО ЗА ОНЕЗИ С РЕШЕТКА · негово, 13.09 (запис 223):
+     * „Поправи залепения хедър НАВСЯКЪДЕ."
+     *
+     * Дотук двете стояха в `zakachiReshetkata`, а нея я викат само пет прозореца.
+     * Профил, Настройки и ИИ не я викат — техните таблици (достъпът, разписката
+     * на мострата, номенклатурите, находките, агентите) отплуваха при първия
+     * скрол, и никой не го беше мерил.
+     *
+     * Мястото е ТУК, защото тук се рисува всеки прозорец. Списък с прозорци,
+     * който трябва да се пази с ръка, е списък, който ще изостане при деветия.
+     */
+    zalepiGlavata(tyalo);
+    pokazhiOtryazanoto(tyalo);
   }
 
   window.addEventListener('hashchange', narisuvay);
