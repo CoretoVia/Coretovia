@@ -289,6 +289,23 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
   const s = smetkite(o, kogato, vObhvata);
   /** ВСИЧКИТЕ пари · оттук идва натрупаният Баланс, който не се мени с погледа */
   const vsichkiteSmetki = smetkite(o, kogato);
+  /**
+   * ЗАДАЧИТЕ С БЮДЖЕТ · четат се ТУК, след `vObhvata`, защото ОБЩ РАЗХОД вече ги
+   * иска И защото се подчиняват на СЪЩИЯ период като парите.
+   *
+   * Негово, 13.09 (запис 205): „Да има и според вкарания период, а ако е сега
+   * периода да е за периода на такта. Това така да влиае на **останалите
+   * изчисления** и да се съобразява ИЗЦЯЛО в сметките с календара."
+   *
+   * Дотук задачите стояха по-надолу, до рисувача си, и никакъв период не ги
+   * пипаше. Щом бюджетът им влиза в сбора, той трябва да се свива с него —
+   * инак периодът би свивал едната половина на разхода, а другата не.
+   */
+  const vsichkiZadachi = zadachiteSByudzhet(o);
+  const zadachite = {
+    ...vsichkiZadachi,
+    redove: vsichkiZadachi.redove.filter((z) => vObhvata(z.data.slice(0, 7))),
+  };
   const kesh = keshatNaMeseca(o, mesets, kogato);
   const v = vkarvaneto(o, kogato, vObhvata);
   const podtab = tekushtPodtab(PAMET.podtab, PODTABOVE);
@@ -306,6 +323,7 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
    * задачите с бюджет си отива оттук, както си отиват редовете на Сметки там.
    */
   const skritiZadachi = !parite();
+
   /**
    * ТРЕЗОРЪТ · Заданието го иска (M06-10) и той пита за него (запис 195 т.5).
    * Смята се от кеша на месеца; нищо не се въвежда (M06-P3).
@@ -377,9 +395,28 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
   // правило 3 · сборовете ПРЕД ЧОВЕКА минават през преградата за цели центове (ДЛ-Н4 · ход 9)
   const ddsSbor = (strana: Strana): Tsentove =>
     sabiri(...ddsNa(strana).map((m) => tsentove(m.suma)));
+  /**
+   * БЮДЖЕТИТЕ НА ЗАДАЧИТЕ ВЛИЗАТ В ОБЩ РАЗХОД · и излизат с бутона.
+   *
+   * Негово, 11.09 (запис 163), ДОСЛОВНО: „Скриването на Задачите с Бюджет(само те
+   * се пренасят от Управление в Сметки, това е важно) от Управление в Сметки ще
+   * ги ИЗКЛЮЧВА ОТ ИЗЧИСЛЕНИЯТА."
+   *
+   * ДОТУК ТЕ НЕ СА БИЛИ ВКЛЮЧЕНИ ИЗОБЩО. Задачите с бюджет се рисуваха като
+   * редове под Разходи и си имаха свой междинен сбор, но ОБЩ РАЗХОД ги
+   * подминаваше — тоест бутонът „изключваше" нещо, което никога не е било вътре,
+   * и числото не мърдаше. Тихо разминаване: таблицата показваше едно, сборът под
+   * нея друго.
+   *
+   * Бюджетът е планиран РАЗХОД и влиза с минус (правило 16). Правило 3: сборът
+   * пред човека минава през преградата за цели центове.
+   */
+  const sborNaZadachite = skritiZadachi
+    ? tsentove(0)
+    : sabiri(...zadachite.redove.map((z) => tsentove(-z.byudzhet_st)));
   // сборът е върху ВИДИМИТЕ · негово, запис 163: скритото в Сметки не се смята
   const sborPrihod = sabiri(tsentove(fPrihod.sbor), ddsSbor('prihod'));
-  const sborRazhod = sabiri(tsentove(fRazhod.sbor), ddsSbor('razhod'));
+  const sborRazhod = sabiri(tsentove(fRazhod.sbor), ddsSbor('razhod'), sborNaZadachite);
   const nap = nahodkiteNaNap(o, `${mesets}-01`, kogato);
   const nesvereni = [...s.prihod, ...s.razhod]
     .flatMap((x) => x.redove)
@@ -474,7 +511,6 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
    * както е и в Управление (ход 88), и както е в самата му Книга.
    */
   /** задачите с бюджет · само те влизат в Сметки (негово, запис 163) */
-  const zadachite = zadachiteSByudzhet(o);
 
   /** В коя колона на такта пада един ден · -1, когато е извън обхвата. */
   const kolonataNa = (den: string): number =>
@@ -642,8 +678,9 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
    */
   const zadachiteHTML = (): Zapechatan => {
     if (skritiZadachi || zadachite.redove.length === 0) return h``;
-    // правило 3 · сборът ПРЕД ЧОВЕКА минава през преградата за цели центове
-    const sborNaZadachite = sabiri(...zadachite.redove.map((z) => tsentove(-z.byudzhet_st)));
+    // ЕДНО число, един дом (правило 14) · `sborNaZadachite` е сметнат горе, там
+    // където влиза и в ОБЩ РАЗХОД. Второ смятане тук би могло да се размине с
+    // първото при следваща промяна, и таблицата пак би казвала друго от сбора.
     return h`<tr class="grupata sektsiya" data-sektsiya="razhod·задачи">
         <td colspan="${KOLONI.length - 1}" translate="no">Задачи с бюджет</td>
         <td class="evro" data-sbor-zadachi translate="no">${pishi(sborNaZadachite)}</td>

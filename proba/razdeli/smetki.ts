@@ -21,6 +21,9 @@ const EVRO_1500 = '1 500,00 €';
 /** бюджетът на „Дело Сондаж" · тук е РАЗХОД и влиза с минус */
 const EVRO_MINUS_250000 = '-250\u202F000,00\u202F€';
 const EVRO_250000 = '250\u202F000,00\u202F€';
+/** движението −1 500 И бюджетът на „Сондаж" −250 000 · сборът им е ОБЩ РАЗХОД */
+const EVRO_MINUS_251500 = '-251\u202F500,00\u202F€';
+const EVRO_MINUS_250300 = '-250\u202F300,00\u202F€';
 /** нулата се пише с нейния си знак · Трезорът я показва, не я крие */
 const EVRO_MINUS_300 = '-300,00\u202F€';
 const EVRO_0 = '0,00 €';
@@ -247,11 +250,40 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
   await p.selectOption(`${ch} select[data-kolona="sektsiyaR"]`, '1');
   await p.press(`${ch} input[data-kolona="suma"]`, 'Enter');
   await p.waitForSelector('[data-reshetka="razhod"] tr.red[data-tablitsa="dvizheniya"]');
-  proveri('ОБЩ Разходи', await tekstNa(p, '[data-sbor="razhod"]'), EVRO_MINUS_1500);
+  // ══ БЮДЖЕТИТЕ НА ЗАДАЧИТЕ СА ЧАСТ ОТ РАЗХОДА · негово, запис 163 ══════
+  //
+  // „Скриването на Задачите с Бюджет … от Управление в Сметки ще ги ИЗКЛЮЧВА от
+  // изчисленията." Дотук те изобщо не бяха включени: рисуваха се като редове със
+  // свой междинен сбор, а ОБЩ РАЗХОД ги подминаваше — тоест бутонът „изключваше"
+  // нещо, което никога не е било вътре, и числото не мърдаше.
+  //
+  // Тук: движението е −1 500, а задачата „Сондаж" носи бюджет −250 000.
+  proveri(
+    'ОБЩ Разходи · движението И бюджетът на задачата',
+    await tekstNa(p, '[data-sbor="razhod"]'),
+    EVRO_MINUS_251500,
+  );
   proveri(
     'Резултатът е приход + разход',
     await tekstNa(p, '[data-tsifra="rezultat"]'),
-    '-300,00 €',
+    EVRO_MINUS_250300,
+  );
+  // И БУТОНЪТ ГИ ВАЖДА · сборът пада ТОЧНО с бюджета им, не с друго число
+  await natisniButon(p, 'skriy-dela');
+  await p.waitForFunction(
+    (evro) => document.querySelector('[data-sbor="razhod"]')?.textContent?.trim() === evro,
+    EVRO_MINUS_1500,
+  );
+  proveri(
+    'ИЗВАДЕНИТЕ задачи излизат и от сметката · сборът пада с бюджета им',
+    `${await tekstNa(p, '[data-sbor="razhod"]')} · ${await tekstNa(p, '[data-tsifra="rezultat"]')}`,
+    `${EVRO_MINUS_1500} · -300,00 €`,
+  );
+  // и се връщат · ЕДИН бутон, две посоки
+  await natisniButon(p, 'skriy-dela');
+  await p.waitForFunction(
+    (evro) => document.querySelector('[data-sbor="razhod"]')?.textContent?.trim() === evro,
+    EVRO_MINUS_251500,
   );
   proveri(
     'секцията „Вкарване" събира трите му секции',
