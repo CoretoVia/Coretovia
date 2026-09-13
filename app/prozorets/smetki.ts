@@ -1267,7 +1267,14 @@ export function narisuvaySmetki(k: KonteksNaEkrana): void {
         takt
       ].toLocaleLowerCase('bg')} · колони ${String(koloniteNaGanta.length)}</p>
       ${dumiteIIznosHTML(DUMI_OT_KNIGATA.smetki)}
-    ${blokatNaPokazatelite(pokazatelite(s, mesetsiNaEkrana))}`
+    ${blokatNaPokazatelite(
+      // ЕДНИТЕ И СЪЩИ ЧИСЛА · показателите виждат онова, което вижда и сборът
+      // над тях: ДДС и бюджетите на задачите (негово, запис 213 т.2)
+      pokazatelite(s, mesetsiNaEkrana, {
+        prihod_st: ddsSbor('prihod'),
+        razhod_st: ddsSbor('razhod') + sborNaZadachite,
+      }),
+    )}`
     }`,
   );
 

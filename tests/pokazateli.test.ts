@@ -97,4 +97,30 @@ describe('показателите', () => {
     expect(po.get('nay-goliam-razhod')?.stoynost).toContain('Заплати');
     expect(po.get('nay-goliam-prihod')?.stoynost).toContain('Наем Банка');
   });
+
+  /**
+   * ДОБАВКИТЕ · негово, 13.09 (запис 213) т.2: „Тези сборни за Задачи и сметки
+   * Бюджето УЧАСТВАТ в сметките на Коефициентите под таблица и календар в Сметки."
+   *
+   * `Smetki` знае само редовете с пари. Бюджетите на задачите идват от Управление,
+   * а ДДС се СМЯТА от таблицата — и двете вече влизат в ОБЩ РАЗХОД на екрана. Ако
+   * не влизаха и тук, показателите под таблицата щяха да казват ДРУГО число от
+   * сбора точно над тях, и никой не би разбрал кое от двете лъже.
+   */
+  it('БЮДЖЕТИТЕ И ДДС влизат в показателите · инак сборът горе и числото долу се разминават', () => {
+    const bez = new Map(pokazatelite(PRIMER, 12).map((x) => [x.klyuch, x]));
+    const s = new Map(
+      pokazatelite(PRIMER, 12, { prihod_st: 100_00, razhod_st: -250_00 }).map((x) => [x.klyuch, x]),
+    );
+    expect(s.get('prihod')?.st).toBe((bez.get('prihod')?.st ?? 0) + 100_00);
+    expect(s.get('razhod')?.st).toBe((bez.get('razhod')?.st ?? 0) + 250_00);
+    // и резултатът се смята от ДВЕТЕ, не от старите сборове
+    expect(s.get('rezultat')?.st).toBe((s.get('prihod')?.st ?? 0) - (s.get('razhod')?.st ?? 0));
+  });
+
+  it('БЕЗ добавки се държи както преди · подразбирането не мени нищо', () => {
+    const a = pokazatelite(PRIMER, 12);
+    const b = pokazatelite(PRIMER, 12, { prihod_st: 0, razhod_st: 0 });
+    expect(a.map((x) => x.stoynost)).toEqual(b.map((x) => x.stoynost));
+  });
 });

@@ -828,4 +828,46 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
     ),
     true,
   );
+
+  // ══ 4л · ПОКАЗАТЕЛИТЕ КАЗВАТ СЪЩОТО · негово, запис 213 т.2 ═════════════
+  //
+  // „Тези сборни за Задачи и сметки Бюджето УЧАСТВАТ в сметките на Коефициентите
+  // под таблица и календар в СМетки."
+  //
+  // Показателите се смятат от `Smetki`, който знае само редовете с пари; ДДС се
+  // СМЯТА от таблицата, а бюджетите идват от Управление. Не влизаха ли и в трите
+  // места, числото под таблицата би се разминало със сбора точно над нея — и
+  // никой не би разбрал кое от двете лъже. Тук се пита дали СЪВПАДАТ.
+  razdel = '4л · показателите казват същото';
+  const chislo = async (izbor: string): Promise<string> =>
+    (await tekstNa(p, izbor)).replace(/^-/, '');
+  proveri(
+    'ОБЩ ПРИХОД горе и „Приход общо" отдолу са ЕДНО число',
+    `${await chislo('[data-sbor="prihod"]')} · ${await chislo(
+      '[data-pokazatel="prihod"] .tsifra',
+    )}`,
+    `${await chislo('[data-sbor="prihod"]')} · ${await chislo('[data-sbor="prihod"]')}`,
+  );
+  proveri(
+    'ОБЩ РАЗХОД горе и „Разход общо" отдолу също · по модул, защото разходът е с минус',
+    `${await chislo('[data-sbor="razhod"]')} · ${await chislo(
+      '[data-pokazatel="razhod"] .tsifra',
+    )}`,
+    `${await chislo('[data-sbor="razhod"]')} · ${await chislo('[data-sbor="razhod"]')}`,
+  );
+  proveri(
+    'и РЕЗУЛТАТЪТ в лентата горе е резултатът на показателите',
+    `${await tekstNa(p, '[data-tsifra="rezultat"]')} · ${await tekstNa(
+      p,
+      '[data-pokazatel="rezultat"] .tsifra',
+    )}`,
+    `${await tekstNa(p, '[data-tsifra="rezultat"]')} · ${await tekstNa(p, '[data-tsifra="rezultat"]')}`,
+  );
+  proveri(
+    'и формулата им КАЗВА, че бюджетите и ДДС са вътре',
+    (
+      await p.$eval('[data-pokazatel="razhod"]', (e) => e.getAttribute('data-podskazka') ?? '')
+    ).includes('бюджетите на задачите'),
+    true,
+  );
 }
