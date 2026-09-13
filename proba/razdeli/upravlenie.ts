@@ -265,17 +265,38 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
   await p.waitForSelector('tr.red.zadacha.svarshena');
   proveri(
     'потвърдената задача носи БЕЛЕГ на реда · време в клетка НЯМА (запис 204)',
-    `${await p.$$eval('tr.red.zadacha.svarshena', (es) => es.length)} · ${await p.$$eval(
-      'tr.red.zadacha td[data-kolona="svarshena"]',
+    `${await p.$$eval(
+      '[data-reshetka="zadachi"] tr.red.zadacha.svarshena',
       (es) => es.length,
-    )}`,
+    )} · ${await p.$$eval('tr.red.zadacha td[data-kolona="svarshena"]', (es) => es.length)}`,
     '1 · 0',
+  );
+  // ══ АРХИВНАТА ТАБЛИЦА · `zadanie/CHISTO/07` И23 ═══════════════════════
+  // „редът излиза от дневния ред и отива в архивна таблица, която се показва
+  // само ако зареденият период я включва" · и оценката му става празна.
+  proveri(
+    'завършената влиза и в АРХИВНАТА таблица · с деня на потвърждаването',
+    `${await p.$$eval('[data-reshetka="arhiv"] tbody tr', (es) => es.length)} · ${(await p.$eval('[data-reshetka="arhiv"] tbody tr td', (e) => e.textContent ?? '')).length}`,
+    '1 · 10',
+  );
+  proveri(
+    'и ОЦЕНКАТА ѝ е изпразнена · свършена работа няма спешност',
+    await p.$eval('[data-reshetka="zadachi"] tr.red.zadacha.svarshena', (e) => {
+      const kletki = [...e.querySelectorAll('td.kletka')];
+      return kletki.some((c) => (c.textContent ?? '').includes('Спешно'));
+    }),
+    false,
   );
   // и обратно · Журналът пази и двете
   await p.click(zadachata, { button: 'right' });
   await p.waitForSelector('[data-menyu]');
   await p.click('[data-tochka="red.nesvarshena"]');
   await p.waitForFunction(() => document.querySelectorAll('tr.red.zadacha.svarshena').length === 0);
+  proveri(
+    'върнатата в работа задача изважда и архивната таблица · празна не се рисува',
+    await p.$$eval('[data-reshetka="arhiv"]', (es) => es.length),
+    0,
+  );
   proveri(
     'върнатата в работа задача си сваля белега',
     await p.$$eval('tr.red.zadacha.svarshena', (es) => es.length),

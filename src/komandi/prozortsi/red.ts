@@ -785,6 +785,8 @@ function komandaZaSvarshena(svarshena: boolean): Komanda<TovarRed> {
       const { r, s, ime } = redatSImeto(v, k);
       const den = typeof v.den === 'string' ? v.den : null;
       const beshe = r.staro['svarshena'] ?? null;
+      const ots = r.staro['otsenka'] ?? null;
+      const staraOtsenka = ots !== null && 'nomer' in ots ? String(ots.nomer) : '';
       return predvaritelno(
         k,
         klyuch,
@@ -796,9 +798,15 @@ function komandaZaSvarshena(svarshena: boolean): Komanda<TovarRed> {
             expectedRev: revNa(k, s),
           },
         ],
-        [razlika('Свършена', beshe !== null && 'tekst' in beshe ? beshe.tekst : '', den ?? '')],
+        // И ОЦЕНКАТА СЕ КАЗВА · `zadanie/CHISTO/07` И23: „оценката става празна".
+        // Промяна, която човек не вижда в прегледа преди да натисне, е промяна
+        // зад гърба му — а К3 иска той да приема онова, което Е предложено.
+        [
+          razlika('Свършена', beshe !== null && 'tekst' in beshe ? beshe.tekst : '', den ?? ''),
+          ...(svarshena && staraOtsenka !== '' ? [razlika('Оценка', staraOtsenka, '')] : []),
+        ],
         svarshena
-          ? `„${ime}" е потвърдена за свършена на ${den ?? ''}.`
+          ? `„${ime}" е потвърдена за свършена на ${den ?? ''}${staraOtsenka === '' ? '' : ' · Оценката се изпразва'}.`
           : `„${ime}" се връща в работа.`,
       );
     },
