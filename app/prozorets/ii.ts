@@ -208,16 +208,27 @@ function posledenVnos(o: Ogledalo): PayloadKnigaVnesena | undefined {
 }
 
 function vremetoMu(a: Agent, o: Ogledalo): string {
-  if (a.nomer !== 1) return '—';
+  // ТИРЕТО НЕ КАЗВА НИЩО · агент, който още не работи, поне казва кога ще
+  if (!a.aktiven) return 'никога';
   const v = posledenVnos(o);
   return v === undefined ? 'още не е викан' : v.vnesenoNa.slice(0, 16).replace('T', ' ');
 }
 
 function otchetatMu(a: Agent, o: Ogledalo): string {
-  if (a.nomer !== 1) return 'идва с ход 11а';
+  if (!a.aktiven) return `${a.dlazhnost} · още не е викан нито веднъж`;
   const v = posledenVnos(o);
   if (v === undefined) return 'няма прочетена Книга';
   return `предложени ${v.predlozheni} · приети ${v.prieti} · отказани ${v.otkazani} · находки ${v.nahodki}`;
+}
+
+/**
+ * ЕДИН РЕД НА АГЕНТ · за двете таблици, активни и неактивни.
+ *
+ * Два строителя за едно и също нещо биха се разминали при първата промяна на
+ * колона; затова редът е един и таблицата само избира КОГО да покаже.
+ */
+function redNaAgenta(a: Agent, o: Ogledalo): Zapechatan {
+  return h`<tr class="red" data-agent="${a.nomer}"><td class="nomer">${a.nomer}</td><td translate="no">${a.agent}</td><td translate="no">${a.dlazhnost}</td><td translate="no">${a.zadacha}</td><td data-status>${statusNaAgenta(a)}</td><td data-vreme translate="no">${vremetoMu(a, o)}</td><td data-otchet-agent>${otchetatMu(a, o)}</td></tr>`;
 }
 
 export function narisuvayII(k: KonteksNaEkrana): void {
@@ -232,13 +243,25 @@ export function narisuvayII(k: KonteksNaEkrana): void {
       <h2 class="lenta" translate="no">${p.lenti[0] ?? ''}</h2>
       <table class="reshetka agenti" data-agenti="aktivni">
         <thead><tr>${glavi}</tr></thead>
-        <tbody class="tablitsa">${AGENTI.map(
-          (a) =>
-            h`<tr class="red" data-agent="${a.nomer}"><td class="nomer">${a.nomer}</td><td translate="no">${a.agent}</td><td translate="no">${a.dlazhnost}</td><td translate="no">${a.zadacha}</td><td data-status>${statusNaAgenta(a)}</td><td data-vreme translate="no">${vremetoMu(a, o)}</td><td data-otchet-agent>${otchetatMu(a, o)}</td></tr>`,
-        )}</tbody>
+        <tbody class="tablitsa">${AGENTI.filter((a) => a.aktiven).map((a) => redNaAgenta(a, o))}</tbody>
       </table>
       <h2 class="lenta" translate="no">${p.lenti[1] ?? ''}</h2>
-      <p class="vest" data-agenti="neaktivni">Празна, както е в Книгата. Тук ще стоят агентите, които Стопанинът е спрял — спирането идва с ход 11а заедно с Уменията.</p>
+      <!--
+        НЕАКТИВНИТЕ НЕ СА ПРАЗНА ТАБЛИЦА · негов избор, 13.09 (запис 209).
+
+        Дотук ГОРНАТА таблица показваше и петте, а долната казваше „Празна,
+        както е в Книгата" — при положение че четири от петте носят
+        „aktiven: false" в самата Книга. Тоест екранът противоречеше на
+        собствените си данни: активният е ЕДИН, а долната секция зееше.
+
+        Сега всеки е там, където Книгата го слага. Долната таблица носи
+        четиримата с длъжността и задачата им — човек вижда КАКВО идва, а не
+        празно място, което не казва нищо.
+      -->
+      <table class="reshetka agenti" data-agenti="neaktivni">
+        <thead><tr>${glavi}</tr></thead>
+        <tbody class="tablitsa">${AGENTI.filter((a) => !a.aktiven).map((a) => redNaAgenta(a, o))}</tbody>
+      </table>
     </section>
     <section class="sektsiya" data-sektsiya="vnos">
       <h2>Прочети Книгата</h2>

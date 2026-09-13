@@ -113,6 +113,32 @@ export async function napalniSMostra(
     return 'seqove' in r ? '' : r.zashto.join(' ');
   };
 
+  /**
+   * Стъпка БЕЗ таблица · разписките не живеят в таблица, а в списък на Огледалото.
+   *
+   * `veche` се пита отвън, защото всяко такова нещо се брои по своему; общото е
+   * едно: мострата НЕ УДВОЯВА при второ пускане.
+   */
+  const stapkaBezTablitsa = async (
+    kakvo: string,
+    komanda: string,
+    tovari: readonly unknown[],
+    veche: boolean,
+  ): Promise<void> => {
+    if (veche) {
+      redove.push({ kakvo, broy: 0, otkaz: 'вече ги има · мострата не удвоява' });
+      return;
+    }
+    let broy = 0;
+    let otkaz = '';
+    for (const t of tovari) {
+      const dumi = await deystvie(komanda, t);
+      if (dumi === '') broy += 1;
+      else if (otkaz === '') otkaz = dumi;
+    }
+    redove.push({ kakvo, broy, otkaz });
+  };
+
   /** Една стъпка · прескача се, ако таблицата вече има редове. */
   const stapka = async (
     kakvo: string,
@@ -516,6 +542,68 @@ export async function napalniSMostra(
       } satisfies Kletki,
     },
   ]);
+
+  /**
+   * РАЗПИСКИТЕ ЗА ВНОС · негов избор, 13.09 (запис 209), по думата му от запис
+   * 184: „**Искам да ми напълниш всяка функционалност с информация измислена.**"
+   *
+   * Прозорецът ИИ зееше на три места и това беше едното: „Разписки за внос —
+   * още няма", а с него мълчаха и двете клетки на Сверчика („още не е викан",
+   * „няма прочетена Книга"), защото те се четат от ПОСЛЕДНАТА разписка.
+   *
+   * Три разписки в три различни дни · числата им са СВЪРЗАНИ, не случайни:
+   * избраните не надхвърлят предложените, приетите и отказаните не надхвърлят
+   * избраните (командата го проверява). Първата е чело, третата е днешна.
+   *
+   * ЗАЩО ПРЕЗ КОМАНДАТА, а не направо в Журнала: мострата минава през Портата
+   * като всеки друг (правило 2), тъй че разписките ѝ са толкова истински,
+   * колкото и неговите — просто числата са измислени.
+   */
+  const predi = (dni: number): string => {
+    const d = new Date(`${dnes}T09:30:00.000Z`);
+    d.setUTCDate(d.getUTCDate() - dni);
+    return d.toISOString();
+  };
+  await stapkaBezTablitsa(
+    'ИИ · разписки за внос',
+    'kniga.vnesi',
+    [
+      {
+        otpechatakNaFayla: 'mostra-a1b2c3d4e5f60718',
+        iznesenoNa: '',
+        kursorSeqNaIznosa: 0,
+        predlozheni: 14,
+        izbrani: 14,
+        prieti: 12,
+        otkazani: 2,
+        nahodki: 1,
+        vnesenoNa: predi(9),
+      },
+      {
+        otpechatakNaFayla: 'mostra-b2c3d4e5f6071829',
+        iznesenoNa: '',
+        kursorSeqNaIznosa: 0,
+        predlozheni: 6,
+        izbrani: 5,
+        prieti: 5,
+        otkazani: 0,
+        nahodki: 0,
+        vnesenoNa: predi(2),
+      },
+      {
+        otpechatakNaFayla: 'mostra-c3d4e5f607182930',
+        iznesenoNa: '',
+        kursorSeqNaIznosa: 0,
+        predlozheni: 3,
+        izbrani: 3,
+        prieti: 3,
+        otkazani: 0,
+        nahodki: 0,
+        vnesenoNa: predi(0),
+      },
+    ],
+    porta.ogledalo().vnasyaniya.length > 0,
+  );
 
   return redove;
 }

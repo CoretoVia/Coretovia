@@ -1031,10 +1031,14 @@ main.prozorets {
   button {
     display: none;
   }
+  /* НА ХАРТИЯ НЯМА СКРОЛ · блокът пуска и двете оси, за да не отреже колони
+     вдясно и редове отдолу. И таванът на височината пада: на екрана той пази
+     четирите ленти видими, а на лист само би нарязал таблицата. */
   .ekran .pregled,
   .ekran .smetki-blokove,
   .ekran .darvo-blok {
     overflow: visible;
+    max-height: none;
   }
   .ekran .pregled .reshetka.prodazhbi thead tr th,
   .ekran .smetki-blokove .reshetka.smetki thead tr th {
@@ -1043,6 +1047,27 @@ main.prozorets {
   .ekran .gant-skrol .reshetka.kalendar thead th.ime,
   .ekran .gant-skrol .reshetka.kalendar tbody th.ime {
     position: static;
+  }
+  /* ЗАЛЕПЕНОТО СЕ ОТЛЕПЯ · и по двете оси.
+
+     `position: sticky` на хартия няма спрямо какво да се лепи и браузърът го
+     оставя там, където елементът е бил при печат — тоест главата и лявата
+     колона се НАДПЕЧАТВАТ върху данните. Дотук тук стоеше само дървото на
+     Продажби и Сметки; лявата колона на слятата таблица и новата залепена
+     глава нямаха правило и щяха да лягат върху реда под себе си.
+
+     `top` и `left` ги МАХА машината, не стилът: те се пишат от `zalepiGlavata`
+     и `zalepiLyavata` ВЪРХУ самия елемент, а inline стил бие всяко правило тук.
+     Надбягване с `!important` би било по-кратко и по-лошо — виж
+     `otlepiZaPechat` в `kolonite.ts`. */
+  .ekran .darvo-blok .reshetka.darvo .zalepena-kolona,
+  .ekran .darvo-blok .reshetka.darvo .zalepena-glava {
+    position: static;
+  }
+  /* и главата се ПОВТАРЯ на всеки лист · таблица от три страници без имена на
+     колоните е списък от числа */
+  .ekran .reshetka thead {
+    display: table-header-group;
   }
   .reshetka tr,
   .tablitsa-blok,
@@ -2059,4 +2084,21 @@ select.pole:required {
 
 :root[data-pomosht="nachalo"] .obyasnenie .znak {
   display: none;
+}
+
+/* КОРМИЛОТО НА СЕДМИЦАТА · ДЛ-Т58 · негово, 11.09 (запис 195) т.7: „знаеш кой
+   ден какво прави и КАКВО Е ПРАВИЛ." Миналото време иска минала седмица, а
+   прозорецът беше закован на днешната. */
+.ekran .sedmitsa-kormilo {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.3rem;
+}
+
+.ekran .sedmitsa-kormilo .sedmitsa-koga {
+  flex: 1 1 auto;
+  text-align: center;
+  color: var(--sivo);
+  font-size: 0.85rem;
 }

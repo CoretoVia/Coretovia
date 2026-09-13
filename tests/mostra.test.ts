@@ -65,4 +65,34 @@ describe('мострата · измислените данни', () => {
     expect(porta.ogledalo().broySabitiya).toBe(predi);
     expect(vtoro.every((r) => r.broy === 0)).toBe(true);
   });
+
+  /**
+   * РАЗПИСКИТЕ ЗА ВНОС · негов избор, 13.09 (запис 209), по думата му от запис
+   * 184: „Искам да ми напълниш всяка функционалност с информация измислена."
+   *
+   * Прозорецът ИИ зееше на три места и това беше едното: „Разписки за внос —
+   * още няма". С него мълчаха и двете клетки на Сверчика („още не е викан",
+   * „няма прочетена Книга"), защото те се четат от ПОСЛЕДНАТА разписка.
+   */
+  it('пише РАЗПИСКИ ЗА ВНОС · инак прозорецът ИИ зее на три места', async () => {
+    const porta = await otvori();
+    expect(porta.ogledalo().vnasyaniya.length).toBe(0);
+    await napalniSMostra(porta, STOPANIN, DNES);
+    const v = porta.ogledalo().vnasyaniya;
+    expect(v.length).toBe(3);
+    // числата са СВЪРЗАНИ, не случайни · командата ги проверява
+    for (const r of v) {
+      expect(r.izbrani).toBeLessThanOrEqual(r.predlozheni);
+      expect(r.prieti + r.otkazani).toBeLessThanOrEqual(r.izbrani);
+    }
+    // и ПОСЛЕДНАТА е днешната · от нея Сверчикът чете времето и отчета си
+    expect(v.at(-1)?.vnesenoNa.slice(0, 10)).toBe(DNES);
+  });
+
+  it('второ пълнене не удвоява РАЗПИСКИТЕ · както не удвоява и редовете', async () => {
+    const porta = await otvori();
+    await napalniSMostra(porta, STOPANIN, DNES);
+    await napalniSMostra(porta, STOPANIN, DNES);
+    expect(porta.ogledalo().vnasyaniya.length).toBe(3);
+  });
 });
