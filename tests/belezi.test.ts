@@ -14,6 +14,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { VREME_NA_MASHINATA } from '../stroezh/vreme-na-mashinata.js';
 
 const MASHINA = resolve('stroezh/belezi.mjs');
 const SHAPKA = (sast: string) => `**Дата:** 2026-09-11 · **Вид:** решение · **Състояние:** ${sast}`;
@@ -67,7 +68,7 @@ function darvo(koren: string) {
   const pusni = (argv: string[]) =>
     spawnSync(process.execPath, [MASHINA, ...argv], {
       encoding: 'utf8',
-      timeout: 120_000,
+      timeout: VREME_NA_MASHINATA,
       env: { ...process.env, BELEZI_KOREN: koren },
     });
   return { koren, pusni, dalg };
@@ -77,7 +78,7 @@ describe('белезите · четиринайсетата порта', () => 
   it('машината минава върху живото дърво · съответствието е свежо и всеки нов белег има място', () => {
     const r = spawnSync(process.execPath, [MASHINA, '--proveri'], {
       encoding: 'utf8',
-      timeout: 120_000,
+      timeout: VREME_NA_MASHINATA,
     });
     // ПЪРВО обхватът (обход Й): съответствието трябва да брои и четирите вида
     expect(r.stdout).toMatch(

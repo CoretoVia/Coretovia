@@ -24,6 +24,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
+import { VREME_NA_MASHINATA } from '../stroezh/vreme-na-mashinata.js';
 
 const PROEKT = resolve('.');
 const BIN = join(PROEKT, 'node_modules', 'dependency-cruiser', 'bin', 'dependency-cruise.mjs');
@@ -126,7 +127,7 @@ function darvo(koren: string) {
         'src',
         'app',
       ],
-      { cwd: koren, encoding: 'utf8', timeout: 120_000 },
+      { cwd: koren, encoding: 'utf8', timeout: VREME_NA_MASHINATA },
     );
   return { koren, pishi, pusni };
 }

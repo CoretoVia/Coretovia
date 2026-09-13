@@ -14,6 +14,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { VREME_NA_MASHINATA } from '../stroezh/vreme-na-mashinata.js';
 
 const MASHINA = resolve('stroezh/dalg.mjs');
 const MARKER_A =
@@ -53,7 +54,7 @@ function darvo(koren: string) {
   const pusni = (argv: string[]) =>
     spawnSync(process.execPath, [MASHINA, ...argv], {
       encoding: 'utf8',
-      timeout: 120_000,
+      timeout: VREME_NA_MASHINATA,
       env: { ...process.env, DALG_KOREN: koren },
     });
   return { koren, registar, pusni };
@@ -82,7 +83,7 @@ describe('дългът · петнайсетата порта', () => {
   it('машината минава върху живото дърво · нищо затворено не се е отворило тихо · md-то е свежо', () => {
     const r = spawnSync(process.execPath, [MASHINA, '--proveri'], {
       encoding: 'utf8',
-      timeout: 120_000,
+      timeout: VREME_NA_MASHINATA,
     });
     // ПЪРВО обхватът (обход Й): редове има, отворени и затворени
     expect(r.stdout).toMatch(/редове: [1-9]\d* · отворени [1-9]\d* · затворени [1-9]\d*/);
