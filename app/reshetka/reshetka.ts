@@ -34,8 +34,6 @@ import {
   zakachiDesniyaButonNaGlavata,
   zakachiVlacheneto,
   otlepiZaPechat,
-  pokazhiOtryazanoto,
-  zalepiGlavata,
   zalepiLyavata,
 } from './kolonite.js';
 import {
@@ -131,9 +129,11 @@ export function zakachiReshetkata(k: KonteksNaEkrana): void {
   prilozhiKolonite(k.tyalo);
   sloziShiriniteNaDarvoto(k.tyalo);
   zalepiLyavata(k.tyalo);
-  zalepiGlavata(k.tyalo);
-  // отрязаният текст казва себе си цял при задържане (негово, запис 223)
-  pokazhiOtryazanoto(k.tyalo);
+  // ЗАЛЕПЕНАТА ГЛАВА И ОТРЯЗАНИЯТ ТЕКСТ ВЕЧЕ НЕ СА ТУК · те са в `app/main.ts`,
+  // след рисуването на ВСЕКИ прозорец. Негово, 13.09 (запис 223): „навсякъде" —
+  // а тази функция я викат само петте прозореца с решетка. Профил, Настройки и
+  // ИИ не я викат и главите им отплуваха. Лявата колона остава тук: тя е за
+  // дървото и само дървото я има.
   otlepiZaPechat();
   k.tyalo.addEventListener('click', (e) => {
     const buton = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-varni-koloni]');

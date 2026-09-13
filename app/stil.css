@@ -972,18 +972,21 @@ label.malak.buton-grupa .pole.malak {
 /* ЗАЛЕПЕНАТА ГЛАВА · ОБЩОТО ПРАВИЛО · всяка таблица в скролера, не само дървото.
 
    Негово, 13.09 (запис 223): „Поправи залепения хедър НАВСЯКЪДЕ." Измерено
-   същия ден в подтаб НАП: три таблици, и трите с `position: static` глава.
+   същия ден: в подтаб НАП три таблици с `position: static` глава, а на 14.09 и
+   петте прозореца-документа (Профил · Настройки · ИИ · Имоти · Служители) —
+   те дори не викаха закачалката. Скролерът им е тялото на таба (`main.prozorets`),
+   тъй че селекторът пита НЕГО, а не отделните скролери в него.
 
    Специфичността тук е НАРОЧНО по-ниска от правилата на дървото по-долу (три
    класа и два елемента срещу четири класа), за да може решетката с календара
    да си остане със своите цветове и с ъгъла на z-index 4. */
-.ekran .tyalo-skrol table thead .zalepena-glava {
+.ekran main.prozorets table thead .zalepena-glava {
   position: sticky;
   z-index: 3;
   background: var(--fon);
 }
 
-.ekran .tyalo-skrol table thead .zalepena-glava.posledna-zalepena-glava {
+.ekran main.prozorets table thead .zalepena-glava.posledna-zalepena-glava {
   border-bottom: 2px solid var(--linija);
 }
 
@@ -1181,8 +1184,17 @@ main.prozorets {
 .ekran .tablitsa-blok.darvo-blok .reshetka.darvo thead tr th {
   position: sticky;
 }
+/* И ТУК СЪЩОТО · дръжката иска контейнер, но `relative` отлепя главата.
+
+   Дотук това правило важеше за `.reshetka.redove` — решетките на Имоти, на
+   Служители, на Продажби. От 14.09 и техните глави се лепят (негово: „навсякъде"),
+   тъй че `relative` тук би бил същият тих дефект, който `.darvo` вече плати:
+   правилото с повече класове мълчаливо сваля залепването. Мерено на 14.09: първата
+   клетка нямаше атрибута и изглеждаше залепена, а всички след нея — не.
+
+   `sticky` също е контейнер за абсолютното, тъй че дръжката не забелязва разликата. */
 .ekran .tablitsa-blok .reshetka.redove thead tr th[data-kolona] {
-  position: relative;
+  position: sticky;
 }
 
 /* ДРЪЖКАТА В ДЪРВОТО · същият десен ръб · негово, запис 199 т.4. В лявата
