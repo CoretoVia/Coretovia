@@ -87,6 +87,12 @@ import {
   zakachiTemite,
 } from '../reshetka/lenta-deystviya.js';
 import {
+  type Podtab,
+  podtaboveHTML,
+  tekushtPodtab,
+  zakachiPodtabove,
+} from '../reshetka/podtabove.js';
+import {
   tochkiteNaRoditelya,
   tochkiteNaSazdavaneto,
   zakachiSazdavanetoOtDesniyaButon,
@@ -116,8 +122,38 @@ const PAMET = Object.freeze({
   takt: 'upravlenie.takt',
   period: 'upravlenie.period',
   dnes: 'upravlenie.dnes',
+  /** кой подтаб е отворен · негово, 14.09 (записи 226 · 227) */
+  podtab: 'upravlenie.podtab',
 });
 const TABLITSA = 'zadachi';
+/**
+ * ПОДТАБОВЕТЕ на Управление · НЕГОВИТЕ, от името на листа му.
+ *
+ * Листът се казва „УправлениеДелаПреписки" (`src/model/osnova.ts` · К1) — три
+ * имена, слети в едно. Сметки отдавна има подтабове по същата логика; Управление
+ * нямаше, и на 14.09 (запис 227) той отговори на въпроса кое липсва на таблото
+ * му с една дума: „всичките".
+ *
+ * ЗАЩО НЕ ПО НОМЕНКЛАТУРАТА. Видовете задача (Дело · Среща · Преписка · Проект)
+ * се редактират от Настройки, тоест растат и падат; подтаб, роден от тях, би се
+ * появявал и изчезвал сам. Тези три идват от ИМЕТО НА ЛИСТА МУ и са толкова,
+ * колкото са там (правило 19: меню, върху което системата смята, расте само от
+ * Настройки — а тук системата ФИЛТРИРА, и то по негово фиксирано име).
+ *
+ * „Управление" показва ВСИЧКО; другите два стесняват до своя вид. Нищо не се
+ * крие завинаги — това е изглед, не преграда (правило 18: скритото пак се смята).
+ */
+const PODTABOVE_NA_UPRAVLENIE: readonly Podtab[] = Object.freeze([
+  { klyuch: 'upravlenie', ime: 'Управление' },
+  { klyuch: 'dela', ime: 'Дела' },
+  { klyuch: 'prepiski', ime: 'Преписки' },
+]);
+/** кой ВИД задача остава във всеки подтаб · празно значи „всички" */
+const VIDAT_NA_PODTABA: Readonly<Record<string, string>> = Object.freeze({
+  upravlenie: '',
+  dela: 'Дело',
+  prepiski: 'Преписка',
+});
 /** ширината на една колона на такта · при ден (часове) по-тясна */
 const _SHIRINA_NA_KOLONATA: Readonly<Record<Takt, number>> = Object.freeze({
   den: 28,
@@ -249,6 +285,8 @@ interface RedNaEkrana {
   readonly ime: string;
   readonly ot: string;
   readonly do: string;
+  /** видът на задачата · „Дело" · „Среща" · „Преписка" · празно за родител и движение */
+  readonly vidNaZadachata: string;
   readonly speshno: boolean;
   /**
    * ДЕНЯТ НА ПОТВЪРЖДАВАНЕТО · празен, докато задачата не е свършена.
@@ -344,6 +382,7 @@ function redNaRoditel(
     ime,
     ot: '',
     do: '',
+    vidNaZadachata: '',
     speshno: false,
     svarshena: '',
     tds,
@@ -398,6 +437,7 @@ function redNaZadacha(
     dumi,
     kletki,
     ime: `${tekstNaIzbora(o, TABLITSA, 'vid', red.kletki['vid'] ?? null)} ${tekst('ime')}`.trim(),
+    vidNaZadachata: tekstNaIzbora(o, TABLITSA, 'vid', red.kletki['vid'] ?? null),
     ot: tekst('ot'),
     do: tekst('do'),
     speshno:
@@ -506,6 +546,7 @@ function redNaDvizhenie(d: DvizhenieVDarvoto, oblik: readonly GlavaNaOblika[]): 
     ime: parite,
     ot: d.data === '' ? `${d.mesets}-01` : d.data,
     do: '',
+    vidNaZadachata: '',
     speshno: false,
     svarshena: '',
     tds,
@@ -540,6 +581,8 @@ export function narisuvayUpravlenie(k: KonteksNaEkrana): void {
   const filtar = chetiEkranno<(string | null)[]>(PAMET.filtar, []).map((f) => f ?? '');
   const smetki = chetiEkranno<Record<string, Smetka>>(PAMET.smetki, {});
   const kogato = new Date().toISOString();
+  // КОЙ ПОДТАБ · негово, 14.09 (записи 226 · 227): таблото на Сметки е МОДЕЛ и тук
+  const podtab = tekushtPodtab(PAMET.podtab, PODTABOVE_NA_UPRAVLENIE);
 
   // ═══ редовете на дървото · думи · клетки · HTML ═══
   const darvo = darvoto(o);
@@ -568,23 +611,55 @@ export function narisuvayUpravlenie(k: KonteksNaEkrana): void {
   }
   izsipi();
   /**
+   * ПОДТАБЪТ СТЕСНЯВА ДЪРВОТО · негово, 14.09 (записи 226 · 227).
+   *
+   * „Дела" оставя само задачите с вид „Дело", „Преписки" — само „Преписка",
+   * „Управление" не пипа нищо. Родител без нито едно дете от този вид ПАДА:
+   * дърво от празни Имоти не казва нищо и само яде екрана.
+   *
+   * ДВИЖЕНИЯТА ОТ СМЕТКИ също падат в стеснените подтабове — те не са задачи и
+   * нямат вид; в „Дела" ред с пари би бил чужд ред под чуждо име.
+   *
+   * НИЩО НЕ СЕ КРИЕ ЗАВИНАГИ · това е ИЗГЛЕД, не преграда: сборовете и календарът
+   * се смятат върху онова, което се вижда, а „Управление" го връща цялото
+   * (правило 18 · скритото пак се смята).
+   */
+  const vidatNaPodtaba = VIDAT_NA_PODTABA[podtab] ?? '';
+  const sledPodtaba: readonly RedNaEkrana[] =
+    vidatNaPodtaba === ''
+      ? redove
+      : ((): readonly RedNaEkrana[] => {
+          const ostavat = redove.filter(
+            (x) => x.vid === 'zadacha' && x.vidNaZadachata === vidatNaPodtaba,
+          );
+          const roditeli = new Set(ostavat.map((x) => x.roditelId));
+          return redove.filter(
+            (x) =>
+              (x.vid === 'zadacha' && x.vidNaZadachata === vidatNaPodtaba) ||
+              (x.vid === 'roditel' && roditeli.has(x.id)),
+          );
+        })();
+
+  /**
    * ОБОБЩАВАЩИТЕ ОБХВАТИ · негово, 13.09 (запис 210): „календара да обхваща
    * всички редове". Имотът и Обектът нямат свои дати; техният обхват е онова,
    * което стои под тях — задачите И движенията, защото и парите са работа във
    * времето. Смята се ВЕДНЪЖ, върху целия списък, преди филтъра: обхватът на
    * един Имот не бива да се мени според това какво е скрито на екрана.
    */
-  const obhvatite = obobshtenite(redove.map((r) => ({ nivo: r.nivo, ot: r.ot, do: r.do })));
+  /** ЕДИН СПИСЪК НАДОЛУ · обхватите, филтърът, сборовете и архивът гледат него */
+  const redovePodtab: RedNaEkrana[] = [...sledPodtaba];
+  const obhvatite = obobshtenite(redovePodtab.map((r) => ({ nivo: r.nivo, ot: r.ot, do: r.do })));
   for (const [i, ob] of obhvatite) {
-    const r = redove[i];
+    const r = redovePodtab[i];
     if (r === undefined || r.vid !== 'roditel') continue;
-    redove[i] = { ...r, ot: ob.ot, do: ob.do };
+    redovePodtab[i] = { ...r, ot: ob.ot, do: ob.do };
   }
   /** колко движения стоят в дървото · скритото се брои като нула, защото не е там */
-  const broySmetki = redove.filter((r) => r.vid === 'dvizhenie').length;
-  const zaFiltar: RedZaFiltar[] = redove.map((r) => ({ nivo: r.nivo, dumi: r.dumi }));
+  const broySmetki = redovePodtab.filter((r) => r.vid === 'dvizhenie').length;
+  const zaFiltar: RedZaFiltar[] = redovePodtab.map((r) => ({ nivo: r.nivo, dumi: r.dumi }));
   const f = filtrirayDarvoto(zaFiltar, filtar);
-  const vidimi = f.vidimi.map((i) => redove[i]!);
+  const vidimi = f.vidimi.map((i) => redovePodtab[i]!);
 
   // ═══ сборът под всяка глава · върху видимите ═══
   /**
@@ -615,7 +690,7 @@ export function narisuvayUpravlenie(k: KonteksNaEkrana): void {
    * включва". Таблица с глави и вечно празно тяло е обещание, което не се спазва.
    */
   const periodatNaEkrana = periodatNaKolonite(koloniNaTaktove);
-  const vArhiva = redove.filter((r) => {
+  const vArhiva = redovePodtab.filter((r) => {
     if (r.vid !== 'zadacha' || r.svarshena === '') return false;
     if (periodatNaEkrana === null) return true;
     return mesetsatEVPerioda(r.svarshena.slice(0, 7), periodatNaEkrana);
@@ -777,6 +852,12 @@ export function narisuvayUpravlenie(k: KonteksNaEkrana): void {
     h`
     <div class="zalepeno lenti" data-zalepeno="upravlenie">
       <div class="lenta-red poleta-s-tsifri" data-poleta>${poletaHTML}</div>
+      <!--
+        ПОДТАБОВЕТЕ СА ВТОРИЯТ РЕД · същият ред, по който се чете и Сметки
+        (негово, 13.09 · запис 203 т.1: „Реда на подтабовете… да се качи на 2ро
+        място"). Първо КОЛКО, после КЪДЕ, накрая КАКВО МОГА.
+      -->
+      ${podtaboveHTML(PODTABOVE_NA_UPRAVLENIE, podtab)}
       ${lentaNaDeystviyata(BUTONI_NA_UPRAVLENIE, butonHTML)}
     </div>
     <p class="greshka" data-greshka></p>
@@ -803,7 +884,18 @@ export function narisuvayUpravlenie(k: KonteksNaEkrana): void {
         )} · задачи ${String(broyZadachi)} · такт ${IMENA_NA_TAKTOVETE[deystvashtTakt].toLocaleLowerCase('bg')} · колони ${String(
           koloniNaTaktove.length,
         )}</p>
-        <p class="pod-tablitsata" data-sverka="darvo">видими ${f.broyVidimi} от ${redove.length} · родители ${darvo.broyRoditeli} · задачи ${darvo.broyZadachi} · сираци ${darvo.siratsi.length}${eFiltarPrazen(filtar) ? '' : ' · филтърът е включен'}</p>
+        <!--
+          ПРАЗНИЯТ ПОДТАБ КАЗВА, ЧЕ Е ПРАЗЕН · правило 12: изключено ≠ липсващо.
+          Без този ред „Преписки" е бяло поле и не се разбира дали програмата е
+          счупена, или преписки просто няма. Броят на всичко идва до него, за да
+          се вижда, че дървото е там — просто този вид го няма в него.
+        -->
+        ${
+          vidatNaPodtaba === '' || redovePodtab.length > 0
+            ? ''
+            : h`<p class="vest" data-podtab-prazen="${podtab}">Нито една задача от вид „${vidatNaPodtaba}" в дървото · всичко останало стои в подтаб „Управление" (${String(redove.length)} реда).</p>`
+        }
+        <p class="pod-tablitsata" data-sverka="darvo">видими ${f.broyVidimi} от ${redovePodtab.length} · родители ${darvo.broyRoditeli} · задачи ${darvo.broyZadachi} · сираци ${darvo.siratsi.length}${eFiltarPrazen(filtar) ? '' : ' · филтърът е включен'}</p>
         <p class="pod-tablitsata" data-sverka="smetki">сметки ${String(broySmetki)} от ${String(smetkite.ogledani)}${
           smetkite.bezRoditel.length === 0
             ? ''
@@ -816,6 +908,7 @@ export function narisuvayUpravlenie(k: KonteksNaEkrana): void {
     </div>`,
   );
 
+  zakachiPodtabove(k.tyalo, PAMET.podtab, k.prerisuvay);
   zakachiTemite(k.tyalo);
   zakachiReshetkata(k);
 

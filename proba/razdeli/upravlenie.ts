@@ -412,6 +412,85 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
     ].join(' · '),
   );
 
+  // ══ 3б4 · ПОДТАБОВЕТЕ НА УПРАВЛЕНИЕ · негово, 14.09 (записи 226 · 227) ═════
+  //
+  // Той поиска „таблото като модел да се приложи в Управление", а на въпроса кое
+  // още липсва отговори с една дума: „всичките". Листът му се казва
+  // „УправлениеДелаПреписки" (К1) — три имена, слети в едно, и оттам са трите
+  // подтаба.
+  razdel = '3б4 · подтабовете на Управление';
+  proveri(
+    'ТРИ подтаба · с имената от неговия лист',
+    (await tekstoveNa(p, '[data-podtabove] [data-podtab]')).join(' · '),
+    'Управление · Дела · Преписки',
+  );
+  // СПАНЪТ СЕ СМЯТА · сумата е точно десетте трака на подложката, не съвпадение
+  proveri(
+    'трите заемат ТОЧНО десетте трака на лентата',
+    await p.$$eval('[data-podtabove] [data-podtab]', (es) =>
+      es.reduce((a, e) => a + Number((e as HTMLElement).dataset['traka'] ?? 0), 0),
+    ),
+    10,
+  );
+  proveri(
+    'и лентата им е широка колкото таблото · до пиксел',
+    await p.evaluate(
+      () =>
+        Math.round(document.querySelector('[data-podtabove]')!.getBoundingClientRect().width) ===
+        Math.round(document.querySelector('.zalepeno')!.getBoundingClientRect().width),
+    ),
+    true,
+  );
+  const vsichkoVUpravlenie = await p.$$eval(
+    '[data-reshetka="zadachi"] tbody tr',
+    (es) => es.length,
+  );
+  // ОБХВАТЪТ ПЪРВО · стесняването долу значи нещо само ако е имало какво да се стесни
+  proveri('обходът е ВИДЯЛ дърво', vsichkoVUpravlenie > 2, true);
+  await p.click('[data-podtab="dela"]');
+  await p.waitForFunction(
+    () => document.querySelectorAll('[data-reshetka="zadachi"] tbody tr.dvizhenie').length === 0,
+  );
+  proveri(
+    'подтаб „Дела" оставя САМО задачите от този вид · движенията и чуждите родители падат',
+    `движения ${await p.$$eval('[data-reshetka="zadachi"] tbody tr.dvizhenie', (es) => es.length)} · по-малко ${
+      (await p.$$eval('[data-reshetka="zadachi"] tbody tr', (es) => es.length)) < vsichkoVUpravlenie
+    }`,
+    'движения 0 · по-малко true',
+  );
+  // ПОДТАБЪТ Е ЧЕСТЕН И КОГАТО Е ПРАЗЕН · правило 12: изключено ≠ липсващо.
+  // Проверява се ИНВАРИАНТЪТ, а не броят: в дървото на прохода може да има
+  // Преписка, а може и да няма — и двете са верни, но всяко иска свой отговор.
+  await p.click('[data-podtab="prepiski"]');
+  await p.waitForFunction(
+    () =>
+      document.querySelector('[data-podtab-prazen]') !== null ||
+      document.querySelectorAll('[data-reshetka="zadachi"] tbody tr.zadacha').length > 0,
+  );
+  proveri(
+    'подтаб „Преписки" · или показва само Преписки, или КАЗВА, че няма нито една',
+    await p.evaluate(() => {
+      const prazen = document.querySelector('[data-podtab-prazen]');
+      const redove = [...document.querySelectorAll('[data-reshetka="zadachi"] tbody tr.zadacha')];
+      if (redove.length === 0)
+        return (prazen?.textContent ?? '').startsWith('Нито една задача от вид')
+          ? 'празен и го казва'
+          : 'празен и МЪЛЧИ';
+      return redove.every((x) => (x.textContent ?? '').includes('Преписка'))
+        ? 'само Преписки'
+        : 'пусна чужди редове';
+    }),
+    'празен и го казва',
+  );
+  // и се ВРЪЩА · изгледът е изглед, не преграда (правило 18)
+  await p.click('[data-podtab="upravlenie"]');
+  await p.waitForSelector('[data-reshetka="zadachi"] tbody tr');
+  proveri(
+    'подтаб „Управление" връща всичко · нищо не е загубено',
+    await p.$$eval('[data-reshetka="zadachi"] tbody tr', (es) => es.length),
+    vsichkoVUpravlenie,
+  );
+
   razdel = '3в · филтър · сбор · такт';
   // негово, 12.09 (запис 199): филтърът е падащо меню от ВЪВЕДЕНОТО в колоната —
   // избира се готова стойност, вместо да се познава как е изписана
