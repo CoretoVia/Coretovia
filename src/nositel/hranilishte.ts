@@ -65,10 +65,13 @@ export function klyuchalkaMezhduRazdeli():
     locks.request(`coretovia:vrata:${veriga}`, rabota) as Promise<T>;
 }
 
-/** За човешки очи: 3 481 600 → „3,3 МБ". */
-export function kolkoMyasto(baytove: number): string {
-  if (baytove < 0) return '—';
-  if (baytove < 1024) return `${baytove} Б`;
-  if (baytove < 1024 * 1024) return `${(baytove / 1024).toFixed(1).replace('.', ',')} КБ`;
-  return `${(baytove / (1024 * 1024)).toFixed(1).replace('.', ',')} МБ`;
-}
+/**
+ * ФОРМАТЪТ НА МЯСТОТО ЖИВЕЕ ПРИ ДУМИТЕ · не тук.
+ *
+ * Преизнася се, за да не се чупи нито един викащ: `kolkoMyasto` форматира
+ * ЧИСЛО за човешки очи и няма нищо общо с носителя. Оставена тук, тя караше
+ * екрана (`app/prozorets/profil.ts`) да посегне към `src/nositel` — и слоевете
+ * го хванаха веднага: „app-ne-drazhi-vratata". Едно преместване е по-евтино от
+ * второ копие на същите четири реда (правило 14).
+ */
+export { kolkoMyasto } from '../yadro/dumi.js';

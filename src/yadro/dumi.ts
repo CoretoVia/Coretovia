@@ -21,3 +21,18 @@
 export function dumiZaGreshka(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
+
+/**
+ * За човешки очи: 3 481 600 → „3,3 МБ".
+ *
+ * Дотук живееше в `src/nositel/hranilishte.ts` · дойде тук на 14.09, защото
+ * екранът я иска (сваленото копие казва колко тежи), а `app/` няма право да
+ * стига до носителя. Тя не пази нищо — тя ПИШЕ число с думи, и мястото ѝ е
+ * при останалите думи.
+ */
+export function kolkoMyasto(baytove: number): string {
+  if (baytove < 0) return '—';
+  if (baytove < 1024) return `${String(baytove)} Б`;
+  if (baytove < 1024 * 1024) return `${(baytove / 1024).toFixed(1).replace('.', ',')} КБ`;
+  return `${(baytove / (1024 * 1024)).toFixed(1).replace('.', ',')} МБ`;
+}

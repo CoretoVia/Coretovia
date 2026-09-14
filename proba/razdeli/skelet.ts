@@ -246,3 +246,83 @@ export async function blok2(ctx: KonteksNaProhoda): Promise<void> {
     `Веригата е цяла · ${broySabitiya - 1} от ${broySabitiya - 1} звена.`,
   );
 }
+
+/**
+ * РЕЗЕРВНОТО КОПИЕ · целият кръг, в истински браузър · ДЛ-Н1.
+ *
+ * Негово, 14.09 в 14:51 (запис 229): „Журнала съхранява ли данните вече. Мога ли
+ * да попълвам моите вече?"
+ *
+ * Измерено същия ден, преди този раздел: Журналът СЪХРАНЯВА (131 събития оцеляха
+ * пълно затваряне на браузъра), но НЕ СЕ ВРЪЩА — свалената Книга е снимка на
+ * живите редове и качена наново дава 1 събитие и 0,00 €, а `vazstanovi` стоеше с
+ * нула викащи.
+ *
+ * СТОИ НАКРАЯ И Е РАЗРУШИТЕЛЕН · трие цялото хранилище, както би го изхвърлил
+ * браузърът при недостиг на място. Проверка, която не трие, не проверява връщане.
+ *
+ * И ЕДНО ОТКРИТИЕ ОТ СТРОЕНЕТО, което този ред пази: копието се връща на екрана
+ * ЗА ВЛИЗАНЕ, не в Профил. Влезе ли човек пръв, първото събитие вече е негово и
+ * Вратата отказва с право — „Двете истории се разделят на seq 1."
+ */
+export async function blok3(ctx: KonteksNaProhoda): Promise<void> {
+  const { stranitsa: p, broyach } = ctx;
+  const razdel = '0ж · резервното копие';
+  const proveri = (kakvo: string, vidyano: unknown, ochakvano: unknown): boolean =>
+    broyach.proveri(razdel, kakvo, vidyano, ochakvano);
+
+  await otvoriProfilNanovo(p);
+  const predi = await tekstNa(p, '[data-vest]');
+  const broy = Number(predi.split(' ')[0]);
+  proveri('обходът е видял Журнал · инак връщането долу не значи нищо', broy > 10, true);
+
+  // ═══ 1 · СВАЛЯНЕ ═══
+  const [fayl] = await Promise.all([p.waitForEvent('download'), p.click('[data-svali-zhurnal]')]);
+  const pat = await fayl.path();
+  proveri(
+    'свалянето КАЗВА колко събития · и името носи деня и броя',
+    `${(await tekstNa(p, '[data-kopie-vest]')).startsWith(`Свалени ${String(broy)} събития · `)} · ${fayl.suggestedFilename().endsWith(`-${String(broy)}.ndjson`)}`,
+    'true · true',
+  );
+
+  // ═══ 2 · ТРИЕ СЕ ВСИЧКО ═══
+  await p.evaluate(async () => {
+    const bazi = await indexedDB.databases();
+    for (const d of bazi) if (d.name !== undefined) indexedDB.deleteDatabase(d.name);
+    localStorage.clear();
+  });
+  // ПРЕЗАРЕЖДАНЕ, не смяна на хеша · приложението държи Огледалото в ПАМЕТТА,
+  // тъй че без ново зареждане екранът показва свят, чиято база вече я няма
+  await p.goto(ADRES);
+  await p.reload();
+  await p.waitForSelector('[data-vlizane-imeyl]');
+  proveri(
+    'след триенето програмата е празна · и иска имейл',
+    (await p.$('[data-prozortsi]')) === null,
+    true,
+  );
+
+  // ═══ 3 · ВРЪЩАНЕ ОТ КОПИЕТО · преди първата дума ═══
+  await p.evaluate(() => {
+    const d = document.querySelector('[data-kopie-otvori]');
+    if (d instanceof HTMLDetailsElement) d.open = true;
+  });
+  await p.setInputFiles('[data-vlizane-kopie]', pat ?? '');
+  await p.waitForSelector('[data-prozortsi]', { timeout: 30_000 });
+  await otvoriProfilNanovo(p);
+  proveri('ВЪРНАТИ са всичките събития', await tekstNa(p, '[data-vest]'), predi);
+  proveri(
+    'котвата се съгласява · нищо не е махано отзад',
+    await tekstNa(p, '[data-kotva]'),
+    `Котвата съвпада с Журнала на seq ${String(broy)} · нищо не е махано отзад.`,
+  );
+  await p.click('[data-proveri]');
+  await p.waitForFunction(() =>
+    (document.querySelector('[data-veriga]')?.textContent ?? '').includes('Веригата'),
+  );
+  proveri(
+    'и веригата е ЦЯЛА',
+    await tekstNa(p, '[data-veriga]'),
+    `Веригата е цяла · ${String(broy)} от ${String(broy)} звена.`,
+  );
+}

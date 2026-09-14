@@ -30,6 +30,7 @@ import {
   proveriVerigata,
   Vrata,
 } from '../src/yadro/index.js';
+import { prochetiKopie } from '../src/yadro/kopie.js';
 import { napraviZapisvach } from '../src/yadro/zapis.js';
 import type { KonteksNaEkrana } from './kontekst.js';
 import { narisuvayProzorets } from './prozorets/prozortsite.js';
@@ -199,6 +200,33 @@ async function tragni(ekran: HTMLElement): Promise<void> {
     narisuvayVlizaneto(ekran, {
       knigataEOtkrita: parvo !== undefined,
       stopaninat: parvo?.actor ?? '',
+      /**
+       * ВРЪЩАНЕ ОТ КОПИЕ В ПРАЗНА КНИГА · негово, 14.09 (запис 229).
+       *
+       * Авторът идва ОТ САМОТО КОПИЕ, не от полето за имейл: събитията носят
+       * своя `actor` и подписът го покрива (правило 4). Да се иска имейл тук би
+       * значело човек да въведе нещо, което после ще бъде пренебрегнато — или,
+       * по-лошо, да реши, че може да смени автора на чужда история.
+       *
+       * И се влиза с НЕГО · инак копието влиза, а екранът пак иска имейл.
+       */
+      vazstanovi: async (tekst) => {
+        const prochetenoto = prochetiKopie(tekst);
+        if (prochetenoto.greshka !== '')
+          return `Файлът не е прието копие: ${prochetenoto.greshka} Нищо не е внесено.`;
+        const negoviyat = prochetenoto.sabitiya[0]?.actor ?? '';
+        try {
+          const r = await vrata.vazstanovi(KNIGA, negoviyat, prochetenoto.sabitiya);
+          aktor = negoviyat;
+          zapomniEkranno(PAMET_AKTOR, negoviyat);
+          await porta.prezaredi();
+          // екранът се строи наново ОТ НАЧАЛОТО · Книгата вече е пълна
+          await tragni(ekran);
+          return `Върнати ${String(r.vneseni)} събития · Журналът е цял.`;
+        } catch (greshka) {
+          return `Връщането е ОТКАЗАНО: ${greshka instanceof Error ? greshka.message : String(greshka)}`;
+        }
+      },
       vlez: async (imeyl) => {
         // КОЙ ПИШЕ се знае ПРЕДИ записа · командата „открий" сверява товара си
         // срещу актьора и отказва, ако не съвпадат. При отказ имейлът се връща
@@ -299,6 +327,27 @@ async function tragni(ekran: HTMLElement): Promise<void> {
       return r.tsyala
         ? `Веригата е цяла · ${r.proverni} от ${r.proverni} звена.`
         : `Веригата се къса на seq ${r.parvoSchupeno} (${r.prichina}).`;
+    },
+    /**
+     * РЕЗЕРВНОТО КОПИЕ · свалянето и връщането на ЦЕЛИЯ Журнал.
+     *
+     * Негово, 14.09 (запис 229): „Журнала съхранява ли данните вече. Мога ли да
+     * попълвам моите вече?" Измерено същия ден: съхранява, но НЕ СЕ ВРЪЩА —
+     * `navigator.storage.persist()` върна „изтриваемо", а свалената Книга е
+     * снимка на живите редове, не история. Оттам ДЛ-Н1 престава да е ред в дълга.
+     *
+     * ЗАЩО ТУК, А НЕ КАТО КОМАНДА (К2). Каталогът приема ДЕЙСТВИЯ върху Огледалото;
+     * възстановяването пише СУРОВИ събития с чужди хешове и чужд автор — то не е
+     * действие, а пренасяне на самия Журнал. Вратата го знае и го пази: проверява
+     * ЦЯЛАТА верига, преди да запише каквото и да е (`vrata.vazstanovi`). Тук стои
+     * до `proveriVerigata`, която също чете Дневника пряко и по същата причина.
+     */
+    iznesiZhurnala: () => dnevnik.chetiVsichki(KNIGA),
+    vazstanoviZhurnala: async (sabitiya) => {
+      const r = await vrata.vazstanovi(KNIGA, aktor, sabitiya);
+      // Огледалото се сгъва наново · инак екранът показва вчерашния свят
+      await porta.prezaredi();
+      return `Върнати ${String(r.vneseni)} нови събития · ${String(r.veche)} вече бяха тук · Журналът е цял.`;
     },
     otpechatakNaBaytove: (baytove) => sha256NaBaytove(baytove),
     prerisuvay: () => narisuvay(),

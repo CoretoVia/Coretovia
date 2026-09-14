@@ -6,6 +6,7 @@
  * хранилището, проверката на веригата, и препотвърждаването на екрана.
  */
 
+import type { Sabitie } from '../src/yadro/sabitie.js';
 import type { Porta } from '../src/porta/porta.js';
 
 export interface KonteksNaEkrana {
@@ -31,6 +32,15 @@ export interface KonteksNaEkrana {
   proveriVerigata(): Promise<string>;
   /** SHA-256 на качен файл · за отпечатъка на внесената Книга · само коренът държи хеша */
   otpechatakNaBaytove(baytove: ArrayBuffer): Promise<string>;
+  /**
+   * РЕЗЕРВНОТО КОПИЕ · целият Журнал навън и обратно (ДЛ-Н1).
+   *
+   * Негово, 14.09 (запис 229): „Мога ли да попълвам моите вече?" Може, когато
+   * има път назад. Изнасянето дава СЪБИТИЯТА, не снимка на редовете.
+   */
+  iznesiZhurnala(): Promise<readonly Sabitie[]>;
+  /** връща копие · Вратата проверява ЦЯЛАТА верига, преди да запише нещо */
+  vazstanoviZhurnala(sabitiya: readonly Sabitie[]): Promise<string>;
   /** рисува текущия прозорец наново от живото Огледало */
   prerisuvay(): void;
 }
