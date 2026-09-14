@@ -30,6 +30,7 @@ import {
   proveriVerigata,
   Vrata,
 } from '../src/yadro/index.js';
+import { papkiteVBrauzara } from '../src/nositel/papki-web.js';
 import { prochetiKopie } from '../src/yadro/kopie.js';
 import { napraviZapisvach } from '../src/yadro/zapis.js';
 import type { KonteksNaEkrana } from './kontekst.js';
@@ -349,6 +350,8 @@ async function tragni(ekran: HTMLElement): Promise<void> {
       await porta.prezaredi();
       return `Върнати ${String(r.vneseni)} нови събития · ${String(r.veche)} вече бяха тук · Журналът е цял.`;
     },
+    // ПАПКИТЕ · един носител днес (браузърът), един порт завинаги (запис 230 т.2)
+    papkite: papkiteVBrauzara(),
     otpechatakNaBaytove: (baytove) => sha256NaBaytove(baytove),
     prerisuvay: () => narisuvay(),
   };

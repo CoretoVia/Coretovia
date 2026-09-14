@@ -6,6 +6,7 @@
  * хранилището, проверката на веригата, и препотвърждаването на екрана.
  */
 
+import type { PortaKamPapkite } from '../src/yadro/papka.js';
 import type { Sabitie } from '../src/yadro/sabitie.js';
 import type { Porta } from '../src/porta/porta.js';
 
@@ -41,6 +42,16 @@ export interface KonteksNaEkrana {
   iznesiZhurnala(): Promise<readonly Sabitie[]>;
   /** връща копие · Вратата проверява ЦЯЛАТА верига, преди да запише нещо */
   vazstanoviZhurnala(sabitiya: readonly Sabitie[]): Promise<string>;
+  /**
+   * ПАПКИТЕ С ДОКУМЕНТИ · негово, 14.09 (запис 230) т.2: „Всеки обект си има
+   * папка с документи, която е хубаво да се прикачи за по лесна работа с
+   * документите клогато няма ИИ."
+   *
+   * Порт, не пряко API: диалогът за папка го има в Chrome и Edge на десктоп,
+   * а програмата е негова и на телефона. Вторият носител ще влезе, без да се
+   * пипне нито един екран (К2).
+   */
+  readonly papkite: PortaKamPapkite;
   /** рисува текущия прозорец наново от живото Огледало */
   prerisuvay(): void;
 }

@@ -123,7 +123,7 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
     // ДЛ-Т16 · `zadanie/03` B5: върху РОДИТЕЛ идват трите му поименни функции
     // (Дело · Среща · Преписка), а върху ИМОТ и четвъртата (Голямо дело, сиво).
     // Дотук и върху Имот, и върху Обект излизаше един и същи списък.
-    'Добави Задача · Изключи реда · Върни реда · Свършена · Върни в работа · Сторно на последната промяна · Добави Дело · Добави Среща · Добави Преписка · Голямо дело · Имот · Обект · Задача · Среща · Кредит',
+    'Добави Задача · Изключи реда · Върни реда · Свършена · Върни в работа · Сторно на последната промяна · Добави Дело · Добави Среща · Добави Преписка · Голямо дело · Прикачи папка с документи · Имот · Обект · Задача · Среща · Кредит',
   );
   proveri(
     'Голямото дело казва кога идва · видимо в самия пункт',
@@ -490,6 +490,80 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
     await p.$$eval('[data-reshetka="zadachi"] tbody tr', (es) => es.length),
     vsichkoVUpravlenie,
   );
+
+  // ══ 3б5 · ПАПКАТА С ДОКУМЕНТИ · негово, 14.09 (запис 230) т.2 ═════════════
+  //
+  // „Всеки обект си има папка с документи, която е хубаво да се прикачи за по
+  // лесна работа с документите клогато няма ИИ."
+  //
+  // Диалогът за папка е на САМАТА СИСТЕМА и няма кой да го натисне в автоматизиран
+  // браузър. Затова се ПОДСТАВЯ дръжка, която връща два файла — тоест проверява се
+  // поведението на ПРОГРАМАТА (пази ли връзката, чете ли имената, казва ли какво
+  // има), а не рисуването на прозорче от браузъра.
+  razdel = '3б5 · папката с документи';
+  await p.evaluate(() => {
+    const w = globalThis as unknown as { showDirectoryPicker?: unknown };
+    const fayl = (ime: string, size: number) => ({
+      kind: 'file',
+      name: ime,
+      getFile: () => Promise.resolve({ size, lastModified: 1_757_000_000_000 }),
+    });
+    w.showDirectoryPicker = () =>
+      Promise.resolve({
+        kind: 'directory',
+        name: 'Документи на Имота',
+        values: () =>
+          (async function* () {
+            yield fayl('Договор.pdf', 12_345);
+            yield fayl('Акт 16.pdf', 2_048);
+          })(),
+        queryPermission: () => Promise.resolve('granted'),
+        requestPermission: () => Promise.resolve('granted'),
+      });
+  });
+  proveri(
+    'преди прикачването секцията КАЗВА, че няма нито една',
+    (await tekstNa(p, '[data-papki-prazno]')).startsWith('Нито един ред няма прикачена папка'),
+    true,
+  );
+  // десният бутон върху РОДИТЕЛ · там живеят пунктовете за папката
+  await p.click('[data-reshetka="zadachi"] tbody tr.roditel td', { button: 'right' });
+  await p.waitForSelector('[data-menyu]');
+  await p.click('[data-tochka="papka-prikachi"]');
+  await p.waitForSelector('[data-papki] tr.red');
+  proveri(
+    'папката е прикачена · с името си и с ДВАТА файла',
+    `${await tekstNa(p, '[data-papki] tr.red td:nth-child(2)')} · ${await p.$$eval('[data-otvori-fayl]', (es) => es.length)}`,
+    'Документи на Имота · 2',
+  );
+  proveri(
+    'файловете са подредени по име · и всеки е бутон, не текст',
+    (await tekstoveNa(p, '[data-otvori-fayl]')).join(' · '),
+    'Акт 16.pdf · Договор.pdf',
+  );
+  // „ОБНОВИ ПАПКИТЕ" · негово от 11.09 (запис 144) · ДЛ-Т61
+  await p.click('[data-papki-obnovi]');
+  await p.waitForFunction(() =>
+    (document.querySelector('[data-papki-vest]')?.textContent ?? '').startsWith('Обновени'),
+  );
+  proveri(
+    'бутонът „Обнови папките" КАЗВА какво е намерил',
+    await tekstNa(p, '[data-papki-vest]'),
+    'Обновени 1 папки · четими 1 · 2 файла',
+  );
+  // ОТКАЧАНЕТО маха ВРЪЗКАТА · файловете на диска не се пипат, и това се казва
+  await p.click('[data-reshetka="zadachi"] tbody tr.roditel td', { button: 'right' });
+  await p.waitForSelector('[data-tochka="papka-otkachi"]');
+  await p.click('[data-tochka="papka-otkachi"]');
+  await p.waitForSelector('[data-papki-prazno]');
+  proveri(
+    'откачането КАЗВА, че файловете не са пипани',
+    (await tekstNa(p, '[data-papki-vest]')).endsWith('файловете на диска не са пипани.'),
+    true,
+  );
+  await p.evaluate(() => {
+    delete (globalThis as { showDirectoryPicker?: unknown }).showDirectoryPicker;
+  });
 
   razdel = '3в · филтър · сбор · такт';
   // негово, 12.09 (запис 199): филтърът е падащо меню от ВЪВЕДЕНОТО в колоната —

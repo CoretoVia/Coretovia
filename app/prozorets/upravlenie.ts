@@ -92,13 +92,15 @@ import {
   tekushtPodtab,
   zakachiPodtabove,
 } from '../reshetka/podtabove.js';
+import { obobshtenieNaPapkata, type PapkaNaReda } from '../../src/yadro/papka.js';
 import {
   tochkiteNaRoditelya,
   tochkiteNaSazdavaneto,
   zakachiSazdavanetoOtDesniyaButon,
 } from '../reshetka/sazdavaneto.js';
 import { otvoriModel, zapaziModela } from '../reshetka/modeli.js';
-import { podskazka, podskazkaSDumi } from '../reshetka/podskazka.js';
+import type { Tochka } from '../reshetka/menyu.js';
+import { obyasnenie, podskazka, podskazkaSDumi } from '../reshetka/podskazka.js';
 import { h, sloji, type Zapechatan } from '../reshetka/shablon.js';
 import { chetiEkranno, zapomniEkranno } from '../reshetka/pamet-ekran.js';
 import {
@@ -143,6 +145,118 @@ const TABLITSA = 'zadachi';
  * „Управление" показва ВСИЧКО; другите два стесняват до своя вид. Нищо не се
  * крие завинаги — това е изглед, не преграда (правило 18: скритото пак се смята).
  */
+/**
+ * ПАПКИТЕ С ДОКУМЕНТИ · негово, 14.09 в 17:09 (запис 230) т.2, ДОСЛОВНО:
+ * „**Всеки обект си има папка с документи, която е хубаво да се прикачи за по
+ * лесна работа с документите клогато няма ИИ.**"
+ *
+ * Ключовата половина е последната. Сверчикът и вносът чакат своя ход; дотогава
+ * човекът работи с документите НА РЪКА — отваря папката, търси договора, гледа
+ * фактурата. Знае ли програмата КОЯ папка е на кой Имот, тази работа е едно
+ * натискане вместо десет.
+ *
+ * ЖИВЕЕ ИЗВЪН ОГЛЕДАЛОТО · папките са на неговия диск и се менят, без да питат
+ * програмата. Затова се четат при отваряне на екрана и се пазят тук, между
+ * рисуванията — както `mostraVest` в Профил. В Журнала влиза само ВРЪЗКАТА (кой
+ * ред с коя папка), защото тя е негово решение; файловете — никога.
+ */
+let papkite: readonly PapkaNaReda[] = [];
+let papkiteSaCheteni = false;
+let papkataVest = '';
+
+/** Кои редове могат да носят папка · Имот · Обект · Бизнес, не задачите. */
+function mozheDaNosiPapka(izbran: Izbran): boolean {
+  return izbran.tablitsa !== TABLITSA;
+}
+
+/**
+ * ПУНКТОВЕТЕ ЗА ПАПКАТА · върху Имот, Обект и Бизнес.
+ *
+ * Негово, 14.09 (запис 230) т.2. Стоят на десния бутон, при останалите действия
+ * върху реда — там, където той вече търси „какво мога с този Имот".
+ *
+ * СИВОТО КАЗВА ЗАЩО (правило 12): браузър без диалог за папка не е повреда и не
+ * е липсваща функция — той просто не умее това. Пунктът остава видим и обяснява.
+ */
+function tochkiteNaPapkata(k: KonteksNaEkrana, izbran: Izbran): readonly Tochka[] {
+  const veche = papkite.find((p) => p.redId === izbran.id) ?? null;
+  const moga = k.papkite.umee();
+  const prikachi: Tochka = {
+    klyuch: 'papka-prikachi',
+    ime: veche === null ? 'Прикачи папка с документи' : `Смени папката (${veche.ime})`,
+    razreshena: moga,
+    zashto: moga ? '' : 'този браузър не умее да отваря папка · Chrome и Edge на компютър умеят',
+    deystvie: () => {
+      void (async () => {
+        const p = await k.papkite.prikachi(izbran.id);
+        papkataVest =
+          p === null
+            ? 'Не е прикачена папка · ти отказа.'
+            : `Прикачена „${p.ime}" · ${obobshtenieNaPapkata(p)}`;
+        papkiteSaCheteni = false;
+        k.prerisuvay();
+      })();
+    },
+  };
+  if (veche === null) return [prikachi];
+  return [
+    prikachi,
+    {
+      klyuch: 'papka-otkachi',
+      ime: 'Откачи папката',
+      razreshena: true,
+      // ФАЙЛОВЕТЕ НЕ СЕ ПИПАТ · маха се само връзката, и това се КАЗВА
+      zashto: '',
+      deystvie: () => {
+        void (async () => {
+          await k.papkite.otkachi(izbran.id);
+          papkataVest = `Откачена „${veche.ime}" · файловете на диска не са пипани.`;
+          papkiteSaCheteni = false;
+          k.prerisuvay();
+        })();
+      },
+    },
+  ];
+}
+
+/**
+ * ДОКУМЕНТИТЕ ПОД ДЪРВОТО · какво има в прикачените папки.
+ *
+ * ЕДНО НАТИСКАНЕ ДО ФАЙЛА · това е цялата причина да съществува (негово: „за по
+ * лесна работа с документите"). Файлът се отваря в нов раздел през `blob:` адрес
+ * — тоест не напуска устройството (правило 21).
+ */
+function papkiteHTML(k: KonteksNaEkrana): Zapechatan {
+  if (!k.papkite.umee())
+    return h`<section class="sektsiya" data-sektsiya="papki">
+      <h2 class="lenta">Документи</h2>
+      <p class="vest siv" data-papki-nyama>Този браузър не умее да отваря папка. Chrome и Edge на компютър умеят · на телефон засега няма такъв път.</p>
+    </section>`;
+  return h`<section class="sektsiya" data-sektsiya="papki">
+      <h2 class="lenta">Документи</h2>
+      ${obyasnenie('Папката е на твоя диск · програмата помни само КОЯ е и показва какво има в нея. Нищо не се чете и нищо не тръгва навън (правило 21). Прикачва се с десния бутон върху Имот, Обект или Бизнес.')}
+      <div class="deystviya butoni-malki">
+        <button type="button" class="malak" data-papki-obnovi>Обнови папките</button>
+        <span class="vest" data-papki-vest translate="no">${papkataVest === '' ? `прикачени ${String(papkite.length)}` : papkataVest}</span>
+      </div>
+      ${
+        papkite.length === 0
+          ? h`<p class="vest" data-papki-prazno>Нито един ред няма прикачена папка · натисни десния бутон върху Имот, Обект или Бизнес.</p>`
+          : h`<table class="tablitsa" data-papki>
+        <thead><tr><th>ред</th><th>папка</th><th>файлове</th></tr></thead>
+        <tbody>${papkite.map(
+          (p) =>
+            h`<tr class="red" data-papka="${p.redId}"><td translate="no">${p.redId}</td><td translate="no">${p.ime}</td><td>${
+              p.chetima
+                ? h`${p.faylove.length === 0 ? 'празна' : p.faylove.map((f) => h`<button type="button" class="malak vtorichen" data-otvori-fayl="${p.redId}" data-ime-fayl="${f.ime}" translate="no">${f.ime}</button> `)}`
+                : h`<span class="siv">${p.zashtoNe}</span>`
+            }</td></tr>`,
+        )}</tbody>
+      </table>`
+      }
+    </section>`;
+}
+
 const PODTABOVE_NA_UPRAVLENIE: readonly Podtab[] = Object.freeze([
   { klyuch: 'upravlenie', ime: 'Управление' },
   { klyuch: 'dela', ime: 'Дела' },
@@ -903,11 +1017,59 @@ export function narisuvayUpravlenie(k: KonteksNaEkrana): void {
         } · ${sastoyanietoNaRezhima(imetoNaSmetkite)}</p>
       </div>
       ${arhivatHTML()}
+      ${papkiteHTML(k)}
       ${dumiteIIznosHTML(DUMI_OT_KNIGATA.upravlenie)}
     </section>
     </div>`,
   );
 
+  /**
+   * ПАПКИТЕ СЕ ЧЕТАТ ВЕДНЪЖ НА ЕКРАН · и НЕ ПИТАТ за позволение сами.
+   *
+   * Браузърът дава достъп до папка само след жест на човека. Питане при всяко
+   * рисуване би значело прозорче, което изскача без той да е натиснал нищо —
+   * затова списъкът се чете „както е" (`spisak` не пита), а потвърждението идва
+   * от бутона „Обнови папките", който Е жест.
+   */
+  if (!papkiteSaCheteni) {
+    papkiteSaCheteni = true;
+    void k.papkite.spisak().then((spisak) => {
+      papkite = spisak;
+      k.prerisuvay();
+    });
+  }
+  k.tyalo.querySelector<HTMLButtonElement>('[data-papki-obnovi]')?.addEventListener('click', () => {
+    void (async () => {
+      // ОБНОВЯВА ВСЯКА · това е „бутони да се рефрешват папките" от 11.09 (запис 144)
+      // и затваря ДЛ-Т61. Стои ТУК, а не в Сметки → Проверки, както го предвиждаше
+      // редът: по-късната му дума (14.09 · запис 230 т.2) вързва папките за РЕДОВЕТЕ,
+      // а обновяването е при онова, което обновява.
+      const novi: PapkaNaReda[] = [];
+      for (const p of papkite) {
+        const nov = await k.papkite.chetiPak(p.redId);
+        if (nov !== null) novi.push(nov);
+      }
+      papkite = novi;
+      const chetimi = novi.filter((p) => p.chetima).length;
+      const faylove = novi.reduce((a, p) => a + p.faylove.length, 0);
+      papkataVest = `Обновени ${String(novi.length)} папки · четими ${String(chetimi)} · ${String(faylove)} файла`;
+      k.prerisuvay();
+    })();
+  });
+  for (const b of k.tyalo.querySelectorAll<HTMLButtonElement>('[data-otvori-fayl]')) {
+    b.addEventListener('click', () => {
+      void (async () => {
+        const stana = await k.papkite.otvori(
+          b.dataset['otvoriFayl'] ?? '',
+          b.dataset['imeFayl'] ?? '',
+        );
+        if (!stana) {
+          papkataVest = `„${b.dataset['imeFayl'] ?? ''}" не се отвори · виж дали още е в папката.`;
+          k.prerisuvay();
+        }
+      })();
+    });
+  }
   zakachiPodtabove(k.tyalo, PAMET.podtab, k.prerisuvay);
   zakachiTemite(k.tyalo);
   zakachiReshetkata(k);
@@ -992,7 +1154,11 @@ export function narisuvayUpravlenie(k: KonteksNaEkrana): void {
     (izbran) => [
       ...(izbran.tablitsa === TABLITSA
         ? []
-        : tochkiteNaRoditelya(k, izbran, imotatEStroezh(o, izbran))),
+        : [
+            ...tochkiteNaRoditelya(k, izbran, imotatEStroezh(o, izbran)),
+            // ПАПКАТА С ДОКУМЕНТИ · негово, 14.09 (запис 230) т.2
+            ...(mozheDaNosiPapka(izbran) ? tochkiteNaPapkata(k, izbran) : []),
+          ]),
       ...tochkiteNaSazdavaneto(k),
     ],
   );
