@@ -19,6 +19,7 @@ import type { Izbran } from '../../src/porta/porta.js';
 import type { KonteksNaEkrana } from '../kontekst.js';
 import { otvoriIzskachasht } from './izskachasht.js';
 import { pokazhiMenyu, type Tochka } from './menyu.js';
+import { tochkiteZaOtmyana } from './otmyana.js';
 
 /** Номерът на един вид задача по името му · `null`, ако номенклатурата го няма. */
 function vidNaZadachata(k: KonteksNaEkrana, ime: string): number | null {
@@ -193,6 +194,8 @@ export function zakachiSazdavanetoOtDesniyaButon(
     pokazhiMenyu(e.clientX, e.clientY, [
       ...tochkiteNaSazdavaneto(k),
       ...(dopalnitelni === undefined ? [] : dopalnitelni()),
+      // ОТМЯНАТА · и тук, защото изключеният ред няма къде другаде да се върне
+      ...tochkiteZaOtmyana(k),
     ]);
   });
 }

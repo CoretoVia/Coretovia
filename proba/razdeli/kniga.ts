@@ -126,8 +126,8 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
     '0 · 0 · 0 · 0 · 0',
   );
   proveri(
-    'Журналът: 12 + разписка за износ + разписка за внос',
-    (await tekstNa(p, '[data-vest]')).startsWith('14 събития'),
+    'Журналът: 16 + разписка за износ + разписка за внос',
+    (await tekstNa(p, '[data-vest]')).startsWith('18 събития'),
     true,
   );
 

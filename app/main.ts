@@ -36,6 +36,7 @@ import { napraviZapisvach } from '../src/yadro/zapis.js';
 import type { KonteksNaEkrana } from './kontekst.js';
 import { narisuvayProzorets } from './prozorets/prozortsite.js';
 import { pokazhiOtryazanoto, zalepiGlavata } from './reshetka/kolonite.js';
+import { zakachiCtrlZ } from './reshetka/otmyana.js';
 import { zatvoriMenyuto } from './reshetka/menyu.js';
 import {
   izborNaStepenHTML,
@@ -292,6 +293,12 @@ async function tragni(ekran: HTMLElement): Promise<void> {
         (p) => h`<a href="#/${p.klyuch}" data-prozorets="${p.klyuch}" translate="no">${p.list}</a>`,
       )}
     </nav>
+    <!--
+      КАКВО Е ОТМЕНЕНО · негово, 14.09 (запис 232) т.4: Ctrl+Z от всякъде.
+      Тихо Ctrl+Z е половин функция: човек натиска и не знае дали е върнал
+      ред, стойност или нищо. Редът е aria-live, за да го чуе и четец на екран.
+    -->
+    <p class="vest" data-otmyana hidden aria-live="polite"></p>
     <main class="prozorets" data-prozorets-tyalo></main>`,
   );
 
@@ -457,6 +464,13 @@ async function tragni(ekran: HTMLElement): Promise<void> {
   });
   zakachiPodskazkite(ekran);
   zakachiIzboraNaStepen(ekran, narisuvay);
+  // Ctrl+Z · негово, 14.09 (запис 232) т.4 · думите остават, докато не дойде следващото
+  zakachiCtrlZ(k, (dumi) => {
+    const red = ekran!.querySelector<HTMLElement>('[data-otmyana]');
+    if (red === null) return;
+    red.textContent = dumi;
+    red.hidden = false;
+  });
   narisuvay();
 
   if (import.meta.env.PROD && 'serviceWorker' in navigator) {

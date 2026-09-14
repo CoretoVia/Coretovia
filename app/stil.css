@@ -569,18 +569,6 @@ label.malak.buton-grupa .pole.malak {
   max-height: 70vh;
 }
 
-.gant-blok {
-  flex: 1 1 0;
-  min-width: 0;
-}
-
-.gant-skrol {
-  overflow-x: auto;
-  margin-top: 0.25rem;
-  border: 1px solid var(--linija);
-  background: var(--hartiya);
-}
-
 .reshetka.darvo th.podglava {
   font-weight: 400;
   font-size: 0.75rem;
@@ -886,46 +874,6 @@ label.malak.buton-grupa .pole.malak {
 /* КАЛЕНДАРЪТ С ЦИФРИТЕ · негово, 11.09 (запис 145): „да се показва цифрата с
    занака - или +". Знакът има и ЦВЯТ: приходът е зелен, разходът червен,
    нулата изобщо не се пише. */
-.ekran .gant-skrol .reshetka.kalendar {
-  font-variant-numeric: tabular-nums;
-}
-.ekran .gant-skrol .reshetka.kalendar thead th.ime,
-.ekran .gant-skrol .reshetka.kalendar tbody th.ime {
-  text-align: left;
-  white-space: nowrap;
-  position: sticky;
-  left: 0;
-  background: var(--hartiya);
-  z-index: 1;
-}
-.ekran .gant-skrol .reshetka.kalendar tbody td.evro,
-.ekran .gant-skrol .reshetka.kalendar thead th.evro {
-  text-align: right;
-  white-space: nowrap;
-}
-.ekran .gant-skrol .reshetka.kalendar tbody td.prihod {
-  color: var(--zeleno);
-}
-.ekran .gant-skrol .reshetka.kalendar tbody td.razhod {
-  color: var(--cherveno);
-}
-.ekran .gant-skrol .reshetka.kalendar tbody td.nula {
-  color: var(--sivo);
-}
-.ekran .gant-skrol .reshetka.kalendar tbody td.period,
-.ekran .gant-skrol .reshetka.kalendar tfoot td.period {
-  font-weight: 600;
-  border-right: 2px solid var(--linija);
-  background: var(--zeleno-svetlo);
-}
-.ekran .gant-skrol .reshetka.kalendar thead th.dnes,
-.ekran .gant-skrol .reshetka.kalendar tbody td.dnes {
-  background: var(--zhalto);
-}
-.ekran .gant-skrol .reshetka.kalendar tfoot .sbor td {
-  font-weight: 600;
-  border-top: 2px solid var(--linija);
-}
 
 /* ГЛАВАТА НЕ СЕ ЗАЛЕПВА ТУК · и това е находка, не пропуск.
 
@@ -1078,10 +1026,6 @@ main.prozorets {
   }
   .ekran .pregled .reshetka.prodazhbi thead tr th,
   .ekran .smetki-blokove .reshetka.smetki thead tr th {
-    position: static;
-  }
-  .ekran .gant-skrol .reshetka.kalendar thead th.ime,
-  .ekran .gant-skrol .reshetka.kalendar tbody th.ime {
     position: static;
   }
   /* ЗАЛЕПЕНОТО СЕ ОТЛЕПЯ · и по двете оси.

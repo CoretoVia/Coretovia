@@ -12,6 +12,7 @@ import type { KonteksNaEkrana } from '../kontekst.js';
 import { zakachiButonite } from '../reshetka/chernova.js';
 import { chetiEkranno, zapomniEkranno } from '../reshetka/pamet-ekran.js';
 import { reshetkaHTML, zakachiReshetkata } from '../reshetka/reshetka.js';
+import { zakachiSazdavanetoOtDesniyaButon } from '../reshetka/sazdavaneto.js';
 import { h, sloji } from '../reshetka/shablon.js';
 import { butoniteHTML, iznosVestHTML } from './deystviya.js';
 import { dumiteHTML } from './profil.js';
@@ -53,6 +54,9 @@ export function narisuvayImoti(k: KonteksNaEkrana): void {
   );
 
   zakachiReshetkata(k);
+  // ДЕСЕН БУТОН ВЪРХУ ПРАЗНОТО · негово, 14.09 (запис 232) т.4: изключеният ред
+  // го няма на екрана, тъй че връщането му и Ctrl+Z трябва да са и ТУК
+  zakachiSazdavanetoOtDesniyaButon(k);
 
   zakachiButonite(k, 'imoti', TABLITSA_NA_BUTONA);
   k.tyalo

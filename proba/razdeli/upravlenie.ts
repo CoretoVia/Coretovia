@@ -28,6 +28,12 @@ const EVRO_250000 = '250\u202F000,00\u202F€';
 /** новият ред в текста на възел · сивият пункт носи причината си на втори ред */
 const NOV_RED = new RegExp(String.fromCharCode(10), 'g');
 
+/** Менюто до първия пункт за отмяна · те стоят накрая и се менят с Журнала (1в2 ги мери). */
+function bezOtmyanata(punktove: readonly string[]): string[] {
+  const i = punktove.findIndex((x) => x.startsWith('Отмени'));
+  return i === -1 ? [...punktove] : punktove.slice(0, i);
+}
+
 export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
   const { stranitsa: p, broyach } = ctx;
   let razdel = '—';
@@ -117,7 +123,10 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
     // СЪЗДАВАНЕТО СЛЕЗЕ ТУК · негово, 13.09 (запис 210), и `zadanie/03` B5:
     // „Да може тук да се ползва десния бутон и да се дава опция … за добавяне."
     'менюто · действията върху реда, после СЪЗДАВАНЕТО',
-    (await tekstoveNa(p, '[data-tochka]')).map((t) => t.split('\n')[0]).join(' · '),
+    // отмяната и „Върни ред · …" стоят след тях (1в2 ги мери) · тук до първото „Отмени"
+    bezOtmyanata((await tekstoveNa(p, '[data-tochka]')).map((t) => t.split('\n')[0] ?? '')).join(
+      ' · ',
+    ),
     // негово, 13.09 (запис 206): „Задачата се потвърждава през приложението от
     // десния бутон." Оттам са двата нови пункта.
     // ДЛ-Т16 · `zadanie/03` B5: върху РОДИТЕЛ идват трите му поименни функции
@@ -786,7 +795,9 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
   proveri(
     'менюто дава петте му неща · Кредитът е сив',
     // сивият пункт носи причината си на втори ред · тук се чете като едно
-    (await tekstoveNa(p, '[data-menyu] button')).map((x) => x.replace(NOV_RED, ' ')).join(' · '),
+    bezOtmyanata(
+      (await tekstoveNa(p, '[data-menyu] button')).map((x) => x.replace(NOV_RED, ' ')),
+    ).join(' · '),
     'Имот · Обект · Задача · Среща · Кредит идва с ход 11б',
   );
   await p.click('[data-menyu] [data-tochka="imot"]');

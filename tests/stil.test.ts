@@ -25,12 +25,18 @@ const STIL = 'app/stil.css';
  * Класове, които се смятат в израз · всеки е закован с ръка и с мястото си.
  * Расте ли списъкът, расте и стилът — това е целият договор.
  */
+/*
+ * ЦЕНАТА, ПЛАТЕНА НА 14.09.2026: пет от редовете тук сочеха
+ * `app/reshetka/kalendar-tablitsa.ts` — файл, който НЕ СЪЩЕСТВУВА от 12.09 (запис
+ * 199 т.5: тактовете станаха колони на същите редове). Тестът беше зелен, защото
+ * стилът още носеше правилата на мъртвия Гант; махнаха ли се те (негово, запис
+ * 232: „части без работа"), `nula` и `period` останаха без емитер и без стил —
+ * пин към несъществуващ файл. Двата падат; трите живи сочат живия си емитер.
+ */
 const SMETNATI: readonly { readonly klas: string; readonly kade: string }[] = [
-  { klas: 'prihod', kade: 'app/reshetka/kalendar-tablitsa.ts · знакът на клетката' },
-  { klas: 'razhod', kade: 'app/reshetka/kalendar-tablitsa.ts · знакът на клетката' },
-  { klas: 'nula', kade: 'app/reshetka/kalendar-tablitsa.ts · празната клетка' },
-  { klas: 'dnes', kade: 'app/reshetka/kalendar-tablitsa.ts · колоната на днешния ден' },
-  { klas: 'period', kade: 'app/reshetka/kalendar-tablitsa.ts · сборът на реда' },
+  { klas: 'prihod', kade: 'app/prozorets/smetki.ts · знакът на клетката в такта и в чертежа' },
+  { klas: 'razhod', kade: 'app/prozorets/smetki.ts · знакът на клетката в такта и в чертежа' },
+  { klas: 'dnes', kade: 'app/prozorets/smetki.ts · upravlenie.ts · колоната на днешния ден' },
   { klas: 'zavarshena', kade: 'app/prozorets/prodazhbi.ts · състоянието на продажбата' },
   { klas: 'platena', kade: 'app/prozorets/prodazhbi.ts · платената вноска' },
   { klas: 'smetnata', kade: 'app/prozorets/prodazhbi.ts · сметнатата колона' },

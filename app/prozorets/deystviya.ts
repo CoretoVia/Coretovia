@@ -14,6 +14,7 @@ import type { DumaOtKnigata } from '../../src/model/dumi-ot-knigata.js';
 import type { Kletka } from '../../src/model/kletka.js';
 import type { KonteksNaEkrana } from '../kontekst.js';
 import { pokazhiMenyu, type Tochka } from '../reshetka/menyu.js';
+import { tochkiteZaOtmyana } from '../reshetka/otmyana.js';
 import { svaliFayl } from '../reshetka/obshto.js';
 import { podskazka, podskazkaSDumi } from '../reshetka/podskazka.js';
 import { h, type Zapechatan } from '../reshetka/shablon.js';
@@ -235,6 +236,7 @@ export function zakachiDyasnoMenyu(
         zashto: b.zashto,
         deystvie: () => deystvie(b, red),
       }));
-    pokazhiMenyu(e.clientX, e.clientY, [...tochki, ...oshte(izbran)]);
+    // ОТМЯНАТА НАКРАЯ · във всяко дясно меню (негово, 14.09 · запис 232 т.4)
+    pokazhiMenyu(e.clientX, e.clientY, [...tochki, ...oshte(izbran), ...tochkiteZaOtmyana(k)]);
   });
 }

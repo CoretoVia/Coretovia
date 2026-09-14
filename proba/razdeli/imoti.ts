@@ -207,10 +207,14 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
 
   await p.click('tr.red[data-tablitsa="obekti"]', { button: 'right' });
   await p.waitForSelector('[data-menyu]');
+  // ОТМЯНАТА Е ЧЕТВЪРТА · негово, 14.09 (запис 232) т.4: „от всеки десен бутон".
+  // Пинът е за първите три; четвъртият носи ИМЕТО на реда, който ще се отмени,
+  // а то е от данните на прохода — затова се пита началото му, не целият текст.
+  const punktoveNaReda = (await tekstoveNa(p, '[data-tochka]')).map((t) => t.split('\n')[0] ?? '');
   proveri(
-    'дясното меню · Изключи · Върни (недостъпен) · Сторно',
-    (await tekstoveNa(p, '[data-tochka]')).map((t) => t.split('\n')[0]).join(' · '),
-    'Изключи реда · Върни реда · Сторно на последната промяна',
+    'дясното меню · Изключи · Върни (недостъпен) · Сторно · и Отмени (Ctrl+Z) накрая',
+    `${punktoveNaReda.slice(0, 3).join(' · ')} · ${punktoveNaReda[3]?.startsWith('Отмени · запис на ред · ') === true && punktoveNaReda[3].endsWith('(Ctrl+Z)')}`,
+    'Изключи реда · Върни реда · Сторно на последната промяна · true',
   );
   await p.click('[data-tochka="red.izklyuchi"]');
   await p.waitForFunction(() =>
@@ -220,6 +224,66 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
     'изключеният ред не се показва · Журналът го пази',
     await tekstNa(p, '[data-sverka="obekti"]'),
     'живи 0 · изключени 1 · всички 1',
+  );
+
+  // ══ 1в2 · ВРЪЩАНЕТО И Ctrl+Z · негово, 14.09 (запис 232) т.4 ═══════════
+  //
+  // „Върни реда не работи, защото когато го скриеш вече няма къде да натиснеш
+  // десен бутон. За това нека да има винаги от всеки десен бутон на различни
+  // места, ако има действия, да можеш да ги връщаш максимален брой пъти оттам,
+  // и да се включва с Ctrl+Z."
+  //
+  // Точно състоянието отгоре: редът е изключен и го НЯМА на екрана. Дотук пътят
+  // свършваше тук. Сега десният бутон върху ПРАЗНОТО носи „Върни ред · <име>" и
+  // „Отмени · …", а Ctrl+Z работи отвсякъде — без нищо да се трие (сторно).
+  razdel = '1в2 · връщането и Ctrl+Z';
+  const sabitiyaPredi = Number((await tekstNa(p, '[data-vest]')).split(' ')[0]);
+  await p.click('[data-sverka="obekti"]', { button: 'right' });
+  await p.waitForSelector('[data-menyu]');
+  const punktove = (await tekstoveNa(p, '[data-tochka]')).map((t) => t.split('\n')[0] ?? '');
+  proveri(
+    'върху ПРАЗНОТО менюто носи връщането на изключения ред · и отмяната с Ctrl+Z',
+    `${punktove.some((x) => x.startsWith('Върни ред · '))} · ${punktove.some((x) => x.startsWith('Отмени · изключване или връщане на ред'))}`,
+    'true · true',
+  );
+  await p.click('[data-tochka^="varni-red-obekti-"]');
+  await p.waitForFunction(() =>
+    document.querySelector('[data-sverka="obekti"]')?.textContent?.startsWith('живи 1'),
+  );
+  proveri(
+    'изключеният ред се ВЪРНА от празното · без да е натискан самият той',
+    await tekstNa(p, '[data-sverka="obekti"]'),
+    'живи 1 · изключени 0 · всички 1',
+  );
+  // и пак изключен · този път се връща с КЛАВИША
+  await p.click('tr.red[data-tablitsa="obekti"]', { button: 'right' });
+  await p.waitForSelector('[data-tochka="red.izklyuchi"]');
+  await p.click('[data-tochka="red.izklyuchi"]');
+  await p.waitForFunction(() =>
+    document.querySelector('[data-sverka="obekti"]')?.textContent?.startsWith('живи 0'),
+  );
+  await p.keyboard.press('Control+z');
+  await p.waitForFunction(() =>
+    document.querySelector('[data-sverka="obekti"]')?.textContent?.startsWith('живи 1'),
+  );
+  proveri(
+    'Ctrl+Z връща реда · и КАЗВА какво е отменил',
+    `${await tekstNa(p, '[data-sverka="obekti"]')} · ${(await tekstNa(p, '[data-otmyana]')).startsWith('Отменено: изключване или връщане на ред')}`,
+    'живи 1 · изключени 0 · всички 1 · true',
+  );
+  // Журналът е само за добавяне · отмяната е ДОБАВЕНО сторно, не изтрит ред:
+  // връщане + изключване + сторно = три събития ОТГОРЕ, нула отдолу
+  proveri(
+    'нищо не е изтрито · отмяната стои в Журнала като сторно',
+    Number((await tekstNa(p, '[data-vest]')).split(' ')[0]) - sabitiyaPredi,
+    3,
+  );
+  // и пак изключен · следващите раздели (Книгата · 1д) го чакат ИЗКЛЮЧЕН
+  await p.click('tr.red[data-tablitsa="obekti"]', { button: 'right' });
+  await p.waitForSelector('[data-tochka="red.izklyuchi"]');
+  await p.click('[data-tochka="red.izklyuchi"]');
+  await p.waitForFunction(() =>
+    document.querySelector('[data-sverka="obekti"]')?.textContent?.startsWith('живи 0'),
   );
 
   // ══ 1г · Запази книгата · файлът се чете в прохода ═══════════════════
@@ -288,9 +352,10 @@ export async function blok1(ctx: KonteksNaProhoda): Promise<void> {
   await p.focus('[data-chernova="imoti"] input[data-kolona="ime"]');
   await p.keyboard.press('Enter');
   await p.keyboard.press('Enter');
-  // Дневникът е източникът: 11 събития преди §1д + 1 = 12 · нито три реда, нито две събития
+  // Дневникът е източникът: 15 събития преди §1д (11 + четирите на 1в2) + 1 = 16 ·
+  // нито три реда, нито две събития
   await p.waitForFunction(() =>
-    (document.querySelector('[data-vest]')?.textContent ?? '').startsWith('12 събития'),
+    (document.querySelector('[data-vest]')?.textContent ?? '').startsWith('16 събития'),
   );
   proveri(
     'два Имота, не три',

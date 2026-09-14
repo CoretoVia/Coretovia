@@ -44,6 +44,7 @@ import { veriga } from '../yadro/sabitie.js';
 import { DnevnikNaSverki, MERKA, sverka } from '../yadro/sverka.js';
 import type { Vrata } from '../yadro/vrata.js';
 import type { Porta, RezultatNaIzpalnenie } from './porta.js';
+import { type OtmyanaVKratse, sledvashtotoZaOtmyana } from './otmyana.js';
 
 export interface NastroykiNaIzpalnitelya {
   readonly vrata: Vrata;
@@ -159,6 +160,12 @@ export class Izpalnitel implements Porta {
 
   ogledalo(): Ogledalo {
     return this.#ogledalo;
+  }
+
+  /** от паметта на веригата и от погасените · същите три отказа като на сторното */
+  zaOtmyana(): OtmyanaVKratse | null {
+    const moyata = veriga(this.#n);
+    return sledvashtotoZaOtmyana(this.#verigi.get(moyata) ?? [], this.#ogledalo.pogaseni, moyata);
   }
 
   katalog(): ReturnType<typeof opisNaKataloga> {

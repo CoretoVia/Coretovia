@@ -60,10 +60,17 @@ function zebraPoGrupi(klyuchove: readonly string[]): boolean[] {
   });
 }
 
-/** Кой елемент отваря нова група · шапката на групата и редът на Мястото. */
-const SHAPKI = '.grupata, .gant-myasto';
-/** Кой елемент е РЕД · и в таблиците, и в лентата с имената на Ганта. */
-const REDOVE = '.red, .gant-delo';
+/**
+ * Кой елемент отваря нова група · шапката на групата.
+ *
+ * Дотук тук стояха и `.gant-myasto` · `.gant-delo` · `.gant-imena` — лентата с
+ * имената на отделния Гант. Той си отиде на 12.09 (запис 199 т.5: тактовете са
+ * колони на същите редове), а селекторите останаха — три имена без нито един
+ * елемент, намерени на 14.09 по негово искане (запис 232: „части без работа").
+ */
+const SHAPKI = '.grupata';
+/** Кой елемент е РЕД. */
+const REDOVE = '.red';
 
 /**
  * Закача ивиците · вика се СЛЕД всяко рисуване.
@@ -74,7 +81,7 @@ const REDOVE = '.red, .gant-delo';
  * по-лоша от липсваща: цветът намира, знакът различава, думата обяснява.
  */
 export function zakachiZebrata(koren: ParentNode): void {
-  for (const tablitsa of koren.querySelectorAll<HTMLElement>('.tablitsa, .gant-imena')) {
+  for (const tablitsa of koren.querySelectorAll<HTMLElement>('.tablitsa')) {
     const redove: HTMLElement[] = [];
     const klyuchove: string[] = [];
     let grupa = '';

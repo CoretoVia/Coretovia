@@ -7,6 +7,7 @@
  */
 
 import { TIP } from '../../sabitiya/registar.js';
+import { TABLITSI } from '../../model/osnova.js';
 import { pomosht } from '../../model/pomosht.js';
 import { poIzbor, strogObekt } from '../../model/shema.js';
 import { redKato } from '../../ogledalo/tablitsa.js';
@@ -39,7 +40,10 @@ const storno: Komanda<TovarStorno> = {
       'не се отменят.',
     'верига и номер на събитието · причина · записва се погасяване, нищо не се трие',
   ),
-  prozortsi: ['imoti', 'nastroyki', 'upravlenie'],
+  // ВСЕКИ прозорец с таблици · негово, 14.09 (запис 232): „от всеки десен бутон на
+  // различни места". Дотук Сметки и Продажби нямаха сторно в менюто си, тоест Ctrl+Z
+  // там щеше да работи през каталога, а менюто да мълчи — две истини за едно.
+  prozortsi: [...new Set(TABLITSI.map((t) => t.prozorets))],
   stepen: 'pishe',
   myasto: 'desen-buton',
   proizvezhda: [TIP.storno],

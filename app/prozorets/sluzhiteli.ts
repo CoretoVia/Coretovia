@@ -26,6 +26,7 @@ import { zakachiButonite } from '../reshetka/chernova.js';
 import { zakachiDesniyaButonNaHorata } from '../reshetka/sedmichniyat-prozorets.js';
 import { dopishi, h, sloji, type Zapechatan } from '../reshetka/shablon.js';
 import { reshetkaHTML, zakachiReshetkata } from '../reshetka/reshetka.js';
+import { zakachiSazdavanetoOtDesniyaButon } from '../reshetka/sazdavaneto.js';
 import { butoniteHTML, iznosVestHTML } from './deystviya.js';
 
 /** Кой бутон коя таблица отваря · трите му места за нов ред. */
@@ -130,4 +131,6 @@ export function narisuvaySluzhiteli(k: KonteksNaEkrana): void {
   zakachiButonite(k, 'sluzhiteli', TABLITSA_NA_BUTONA);
   // негово, 11.09 (запис 195) т.7 · седмичната програма и раздаването с ДЕСНИЯ бутон
   zakachiDesniyaButonNaHorata(k, dnes);
+  // и върху ПРАЗНОТО · връщане на изключен ред и Ctrl+Z (негово, 14.09 · запис 232 т.4)
+  zakachiSazdavanetoOtDesniyaButon(k);
 }
