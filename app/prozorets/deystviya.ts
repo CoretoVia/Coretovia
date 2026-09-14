@@ -131,7 +131,18 @@ export async function zapaziKnigata(k: KonteksNaEkrana): Promise<void> {
     ]);
     const kniga = knigataOtOgledaloto(o, kursor, sega);
     const baytove = await napishiKniga(kniga.listove);
-    svaliFayl(new Blob([baytove as unknown as ArrayBuffer], { type: XLSX }), 'Coretovia.xlsx');
+    // ТОЙ ИЗБИРА МЯСТОТО · негово, 14.09 (запис 230) т.1. Откаже ли в диалога,
+    // Книгата НЕ се записва в Журнала като изнесена — инак сверката би твърдяла
+    // за файл, който го няма.
+    const kade = await svaliFayl(
+      new Blob([baytove as unknown as ArrayBuffer], { type: XLSX }),
+      'Coretovia.xlsx',
+      'Книга на Coretovia',
+    );
+    if (kade.startsWith('Не е свалено')) {
+      kazhiZaIznosa(k, kade);
+      return;
+    }
     const r = await k.porta.izpalni(crypto.randomUUID(), 'kniga.iznesi', {
       otpechatak: otpechatakNaModela(MODEL),
       kursor,

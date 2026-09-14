@@ -326,3 +326,99 @@ export async function blok3(ctx: KonteksNaProhoda): Promise<void> {
     `Веригата е цяла · ${String(broy)} от ${String(broy)} звена.`,
   );
 }
+
+/**
+ * СВАЛЯНЕТО ПИТА КЪДЕ · първият път, с подставен диалог.
+ *
+ * Негово, 14.09 в 17:09 (запис 230) т.1, ДОСЛОВНО: „**Когато свалиш файл а
+ * избираш мястото.**"
+ *
+ * Дотук всеки файл падаше в папката „Изтеглени" без въпрос. Сега `svaliFayl`
+ * пита `showSaveFilePicker`, а където го няма — сваля по стария път.
+ *
+ * ТУК СЕ МЕРИ ПЪРВИЯТ ПЪТ · останалата част от прохода маха свойството и върви
+ * по втория (вж. `proba/prohod.ts`). Диалогът на системата няма кой да го
+ * натисне в автоматизиран браузър, затова се ПОДСТАВЯ такъв, който хваща
+ * байтовете — тоест проверява се, че програмата ПИШЕ през него, а не че
+ * браузърът рисува прозорче.
+ *
+ * И ОТКАЗЪТ СЕ МЕРИ · натисне ли „Отказ", браузърът хвърля `AbortError`. Това е
+ * негово решение, не повреда: екранът казва „не е свалено", а Книгата НЕ влиза в
+ * Журнала като изнесена — инак сверката би твърдяла за файл, който го няма.
+ */
+export async function blok4(ctx: KonteksNaProhoda): Promise<void> {
+  const { stranitsa: p, broyach } = ctx;
+  const razdel = '0з · свалянето пита къде';
+  const proveri = (kakvo: string, vidyano: unknown, ochakvano: unknown): boolean =>
+    broyach.proveri(razdel, kakvo, vidyano, ochakvano);
+
+  // ОТВАРЯ СЕ ПЪРВО · `addInitScript` в `prohod.ts` трие свойството при ВСЯКО
+  // зареждане, тъй че подставеният диалог трябва да дойде СЛЕД навигацията.
+  await otvoriProfilNanovo(p);
+  await p.evaluate(() => {
+    const w = globalThis as unknown as {
+      showSaveFilePicker?: unknown;
+      __hvanato?: { ime: string; baytove: number } | undefined;
+      __otkazvay?: boolean;
+    };
+    delete w.__hvanato;
+    w.__otkazvay = false;
+    w.showSaveFilePicker = (opis: { suggestedName?: string }) => {
+      if (w.__otkazvay === true) {
+        const e = new Error('човекът отказа');
+        e.name = 'AbortError';
+        return Promise.reject(e);
+      }
+      let sabrano = 0;
+      return Promise.resolve({
+        createWritable: () =>
+          Promise.resolve({
+            write: (danni: Blob) => {
+              sabrano += danni.size;
+              return Promise.resolve();
+            },
+            close: () => {
+              w.__hvanato = { ime: opis.suggestedName ?? '', baytove: sabrano };
+              return Promise.resolve();
+            },
+          }),
+      });
+    };
+  });
+
+  await p.click('[data-svali-zhurnal]');
+  await p.waitForFunction(() =>
+    (document.querySelector('[data-kopie-vest]')?.textContent ?? '').includes('Свалени'),
+  );
+  const hvanato = await p.evaluate(
+    () => (globalThis as unknown as { __hvanato?: { ime: string; baytove: number } }).__hvanato,
+  );
+  proveri(
+    'файлът мина ПРЕЗ диалога · с име и с байтове',
+    `${(hvanato?.ime ?? '').startsWith('Coretovia-zhurnal-')} · ${(hvanato?.baytove ?? 0) > 1000}`,
+    'true · true',
+  );
+  proveri(
+    'и екранът КАЗВА, че мястото е негово',
+    (await tekstNa(p, '[data-kopie-vest]')).includes('на мястото, което избра'),
+    true,
+  );
+
+  // ═══ ОТКАЗЪТ · негово решение, не повреда ═══
+  await p.evaluate(() => {
+    (globalThis as unknown as { __otkazvay?: boolean }).__otkazvay = true;
+  });
+  await p.click('[data-svali-zhurnal]');
+  await p.waitForFunction(() =>
+    (document.querySelector('[data-kopie-vest]')?.textContent ?? '').includes('Не е свалено'),
+  );
+  proveri(
+    'отказът се КАЗВА с неговите думи · не като грешка',
+    await tekstNa(p, '[data-kopie-vest]'),
+    'Не е свалено · ти отказа.',
+  );
+  // и свойството се връща · следващият раздел не бива да го наследява
+  await p.evaluate(() => {
+    delete (globalThis as { showSaveFilePicker?: unknown }).showSaveFilePicker;
+  });
+}

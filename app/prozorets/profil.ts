@@ -184,12 +184,19 @@ export function narisuvayProfil(k: KonteksNaEkrana): void {
           const sabitiya = await k.iznesiZhurnala();
           const tekst = kopieNaZhurnala(sabitiya);
           const den = new Date().toISOString().slice(0, 10);
-          svaliFayl(
+          // ТОЙ ИЗБИРА МЯСТОТО · негово, 14.09 (запис 230) т.1
+          const kade = await svaliFayl(
             new Blob([tekst], { type: 'application/x-ndjson' }),
             `Coretovia-zhurnal-${den}-${String(sabitiya.length)}.ndjson`,
+            'Резервно копие на Журнала',
           );
+          // ОТКАЗЪТ НЕ СЕ ЗАЛЕПЯ ЗА УСПЕХА · първият опит казваше „Свалени 50 събития
+          // · 57,8 КБ · Не е свалено · ти отказа." и това е ЛЪЖА в първата си половина.
+          // Хванато от собствената проверка на прохода, преди да стигне до него.
           if (p)
-            p.textContent = `Свалени ${String(sabitiya.length)} събития · ${kolkoMyasto(new Blob([tekst]).size)}`;
+            p.textContent = kade.startsWith('Не е свалено')
+              ? kade
+              : `Свалени ${String(sabitiya.length)} събития · ${kolkoMyasto(new Blob([tekst]).size)}${kade === '' ? '' : ` · ${kade}`}`;
         } catch (e) {
           if (p)
             p.textContent = `Свалянето не стана: ${e instanceof Error ? e.message : String(e)}`;

@@ -36,6 +36,23 @@ async function main(): Promise<void> {
   });
   const stranitsa = await brauzar.newPage();
 
+  /**
+   * БЕЗ СИСТЕМНИЯ ДИАЛОГ ЗА ЗАПИС · и това не е заобикаляне.
+   *
+   * Негово, 14.09 (запис 230) т.1: „Когато свалиш файл а избираш мястото."
+   * Оттам `svaliFayl` пита `showSaveFilePicker` — диалог на самата система, който
+   * в автоматизиран браузър НЯМА кой да натисне. Осемте места в прохода, които
+   * чакат сваляне, увиснаха на първото.
+   *
+   * Тук се маха САМО СВОЙСТВОТО, тоест проходът минава по ВТОРИЯ път — онзи,
+   * който важи за Firefox, Safari и всеки телефон. Първият път се мери
+   * отделно, в раздел „0з · свалянето пита къде", с подставен диалог, който
+   * хваща байтовете. Двата пътя са две поведения и всяко иска своя проверка.
+   */
+  await stranitsa.addInitScript(() => {
+    delete (globalThis as { showSaveFilePicker?: unknown }).showSaveFilePicker;
+  });
+
   const greshkiVKonzolata: string[] = [];
   stranitsa.on('pageerror', (e) => greshkiVKonzolata.push(`pageerror: ${e.message}`));
   stranitsa.on('console', (m) => {
@@ -64,6 +81,8 @@ async function main(): Promise<void> {
     // което се доказва, оставя Журнала по-къс — след него няма какво да върви.
     await skelet.blok2(ctx);
     // И НАКРАЯ · резервното копие · трие ЦЯЛОТО хранилище и го връща (ДЛ-Н1)
+    // ПРЕДИ разрушителния · той трие хранилището и след него няма какво да се сваля
+    await skelet.blok4(ctx);
     await skelet.blok3(ctx);
   } catch (greshka) {
     broyach.dobaviNahodka({
