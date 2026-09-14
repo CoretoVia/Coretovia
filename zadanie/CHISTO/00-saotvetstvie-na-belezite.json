@@ -5,7 +5,7 @@
     "ИЗ": 928,
     "ИН": 263,
     "ВП": 147,
-    "ДЛ": 90
+    "ДЛ": 95
   },
   "redove": [
     {
@@ -1410,6 +1410,36 @@
       "staro": "Т63",
       "fayl": "docs/registar-na-dalga.json",
       "novo": "ДЛ-Т63",
+      "vid": "ДЛ"
+    },
+    {
+      "staro": "Т64",
+      "fayl": "docs/registar-na-dalga.json",
+      "novo": "ДЛ-Т64",
+      "vid": "ДЛ"
+    },
+    {
+      "staro": "Т65",
+      "fayl": "docs/registar-na-dalga.json",
+      "novo": "ДЛ-Т65",
+      "vid": "ДЛ"
+    },
+    {
+      "staro": "Т66",
+      "fayl": "docs/registar-na-dalga.json",
+      "novo": "ДЛ-Т66",
+      "vid": "ДЛ"
+    },
+    {
+      "staro": "Т67",
+      "fayl": "docs/registar-na-dalga.json",
+      "novo": "ДЛ-Т67",
+      "vid": "ДЛ"
+    },
+    {
+      "staro": "Т68",
+      "fayl": "docs/registar-na-dalga.json",
+      "novo": "ДЛ-Т68",
       "vid": "ДЛ"
     },
     {
