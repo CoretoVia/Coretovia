@@ -11,9 +11,11 @@ import { prozoretsPoList, SLUZHEBEN_LIST } from '../../src/model/osnova.js';
 import { pomosht } from '../../src/model/pomosht.js';
 import { napalniSMostra, type RedNaMostrata } from '../../src/mostra/napalni.js';
 import { dostapaMi } from '../../src/smetach/pravo.js';
-import { dumiZaGreshka } from '../../src/yadro/dumi.js';
+import { dumiZaGreshka, kolkoMyasto } from '../../src/yadro/dumi.js';
 import type { KonteksNaEkrana } from '../kontekst.js';
-import { obyasnenie, podskazka } from '../reshetka/podskazka.js';
+import { kopieNaZhurnala, prochetiKopie } from '../../src/yadro/kopie.js';
+import { svaliFayl } from '../reshetka/obshto.js';
+import { obyasnenie, podskazka, podskazkaSDumi } from '../reshetka/podskazka.js';
 import { h, sloji, type Zapechatan } from '../reshetka/shablon.js';
 
 /**
@@ -24,6 +26,8 @@ import { h, sloji, type Zapechatan } from '../reshetka/shablon.js';
  * отива в откъснат възел. Същият урок като при износа (`deystviya.ts`).
  */
 let mostraVest = '';
+/** какво каза последното сваляне на Журнала · живее между рисуванията */
+const kopieVest = '';
 let mostraRedove: readonly RedNaMostrata[] = [];
 
 /** Помощта на бутона · защо съществува и какво прави, с наши думи (правило 31). */
@@ -95,6 +99,27 @@ export function narisuvayProfil(k: KonteksNaEkrana): void {
       <button type="button" class="vtorichen" data-proveri>Провери веригата</button>
       <p data-veriga></p>
     </section>
+    <!--
+      РЕЗЕРВНОТО КОПИЕ · негово, 14.09 (запис 229): „Журнала съхранява ли данните
+      вече. Мога ли да попълвам моите вече?"
+
+      Стои ВЕДНАГА след „Провери веригата", защото двете са едно и също умение:
+      първото казва цяла ли е историята, второто я изнася и я връща. И двете
+      четат Дневника пряко — възстановяването не е действие върху Огледалото, а
+      пренасяне на самия Журнал (вж. app/main.ts).
+    -->
+    <section class="sektsiya" data-sektsiya="kopie">
+      <h2>Резервно копие на Журнала</h2>
+      <p>Сваля <strong>целия Журнал</strong> като NDJSON — ред на събитие, с подписите и хешовете. Това НЕ е Книгата: Книгата е снимка на днешните редове, а тук е цялата история, от която тя се пресмята наново.</p>
+      <p>Дръж копието на Драйва си. Данните живеят в този браузър и <em>изтриваеми</em> хранилища браузърът има право да изхвърли при недостиг на място — горе пише кое от двете е при теб.</p>
+      <button type="button" data-svali-zhurnal${podskazkaSDumi(
+        'Сваля всяко събитие от Журнала, ред по ред (NDJSON). Файлът носи подписите и хеш-веригата, тъй че при връщане се проверява, че никой не го е пипал. Нищо не тръгва навън — файлът се пише при теб.',
+      )}>Свали Журнала</button>
+      <p data-kopie-vest>${kopieVest}</p>
+      <p class="pod-tablitsata">Връщане: качи свалено копие. Вратата проверява ЦЯЛАТА верига, преди да запише каквото и да е — разминае ли се на едно звено, НЕ ВЛИЗА НИЩО.</p>
+      <input type="file" accept=".ndjson,.jsonl,.json,.txt" data-vazstanovi>
+      <p data-vazstanovi-vest></p>
+    </section>
     <section class="sektsiya" data-sektsiya="mostra">
       <h2>Мострата</h2>
       <p>Напълва празните таблици с ИЗМИСЛЕНИ данни — имоти, обекти, задачи с бюджети, движения по Сметки, кеш, ДДС, служители и продажби — за да се види цялата програма, преди да е въведен истински ред. Пише се през Вратата, като всяко друго действие: всеки ред влиза в Журнала и се сторнира оттам. Таблица, която вече има редове, не се пипа.</p>
@@ -143,6 +168,65 @@ export function narisuvayProfil(k: KonteksNaEkrana): void {
       k.prerisuvay();
     });
 
+  /**
+   * СВАЛЯНЕ НА ЖУРНАЛА · целият, ред по ред.
+   *
+   * Името носи ДАТА и БРОЙ: копие без дата е копие, за което не се знае от кога
+   * е, а човек с три файла в папката трябва да различи кой е последният, без да
+   * ги отваря.
+   */
+  k.tyalo
+    .querySelector<HTMLButtonElement>('[data-svali-zhurnal]')
+    ?.addEventListener('click', () => {
+      void (async () => {
+        const p = k.tyalo.querySelector('[data-kopie-vest]');
+        try {
+          const sabitiya = await k.iznesiZhurnala();
+          const tekst = kopieNaZhurnala(sabitiya);
+          const den = new Date().toISOString().slice(0, 10);
+          svaliFayl(
+            new Blob([tekst], { type: 'application/x-ndjson' }),
+            `Coretovia-zhurnal-${den}-${String(sabitiya.length)}.ndjson`,
+          );
+          if (p)
+            p.textContent = `Свалени ${String(sabitiya.length)} събития · ${kolkoMyasto(new Blob([tekst]).size)}`;
+        } catch (e) {
+          if (p)
+            p.textContent = `Свалянето не стана: ${e instanceof Error ? e.message : String(e)}`;
+        }
+      })();
+    });
+
+  /**
+   * ВРЪЩАНЕ ОТ КОПИЕ · и ВСЯКА стъпка казва какво е станало.
+   *
+   * Тихият отказ тук е най-скъпият отказ в програмата: човек мисли, че си е
+   * върнал годината, а не си е върнал нищо (правило 12). Затова се съобщава и
+   * когато файлът е нечетим, и когато веригата се къса, и когато всичко е минало.
+   */
+  k.tyalo.querySelector<HTMLInputElement>('[data-vazstanovi]')?.addEventListener('change', (e) => {
+    const vhod = e.target as HTMLInputElement;
+    const fayl = vhod.files?.[0];
+    const p = k.tyalo.querySelector('[data-vazstanovi-vest]');
+    if (fayl === undefined) return;
+    void (async () => {
+      if (p) p.textContent = 'Чета файла…';
+      try {
+        const prochetenoto = prochetiKopie(await fayl.text());
+        if (prochetenoto.greshka !== '') {
+          if (p)
+            p.textContent = `Файлът не е прието копие: ${prochetenoto.greshka} Нищо не е внесено.`;
+          return;
+        }
+        const dumi = await k.vazstanoviZhurnala(prochetenoto.sabitiya);
+        if (p) p.textContent = dumi;
+        k.prerisuvay();
+      } catch (greshka) {
+        if (p)
+          p.textContent = `Връщането е ОТКАЗАНО: ${greshka instanceof Error ? greshka.message : String(greshka)}`;
+      }
+    })();
+  });
   k.tyalo
     .querySelector<HTMLButtonElement>('[data-proveri]')
     ?.addEventListener('click', async () => {

@@ -24,6 +24,14 @@ export interface OpisNaVlizaneto {
   readonly stopaninat: string;
   /** записва кой пише · и открива Книгата, ако е празна · връща думи при отказ */
   vlez(imeyl: string): Promise<string>;
+  /**
+   * ВРЪЩА резервно копие в ПРАЗНА Книга · връща думи (успех или отказ).
+   *
+   * Негово, 14.09 (запис 229). Измерено: след влизане копието вече не се
+   * приема — първото събитие е ново и двете истории се разделят на seq 1.
+   * Затова входът е ТУК, преди първата дума да е записана.
+   */
+  vazstanovi(tekst: string): Promise<string>;
 }
 
 /** Толкова проверка, колкото да не се запише празно или очевидно грешно. */
@@ -59,6 +67,26 @@ export function narisuvayVlizaneto(ekran: HTMLElement, opis: OpisNaVlizaneto): v
         <button type="submit" class="malak" data-vlizane-vlez>Влез</button>
         <p class="pod-tablitsata">Няма парола и няма акаунт. Имейлът казва само кой пише в Журнала — нищо не тръгва навън.</p>
       </form>
+      <!--
+        ВРЪЩАНЕТО ОТ КОПИЕ Е ТУК, А НЕ САМО В ПРОФИЛ · и това не е удобство.
+
+        Негово, 14.09 (запис 229): „Мога ли да попълвам моите вече?" Измерено
+        същия ден, преди този вход да съществува: човек, който е изтрил данните
+        си и влезе наново, ВЕЧЕ е записал първото събитие — откриването на
+        Книгата, с нов час и нов хеш. Вратата тогава отказва с право: „Двете
+        истории се разделят на seq 1. Различни журнали не се сливат."
+
+        Тоест копието можеше да се върне САМО преди първото влизане — а дотогава
+        нямаше откъде да се качи. Правилото на Вратата е вярно и не се пипа
+        (правило 1: Журналът е само за добавяне); мястото на входа беше грешно.
+      -->
+      <details class="vlizane-kopie" data-kopie-otvori>
+        <summary class="vlizane-kopie-glava">Имам резервно копие</summary>
+        <p class="pod-tablitsata">Качи свалено копие на Журнала (.ndjson). Вратата проверява ЦЯЛАТА верига, преди да запише каквото и да е — разминае ли се на едно звено, НЕ ВЛИЗА НИЩО.</p>
+        <p class="pod-tablitsata">Копие се връща в ПРАЗНА Книга. Влезеш ли пръв, първото събитие вече е твое и двете истории не се сливат.</p>
+        <input type="file" accept=".ndjson,.jsonl,.json,.txt" data-vlizane-kopie>
+        <p class="greshka" data-vlizane-kopie-vest></p>
+      </details>
     </div>`,
   );
 
@@ -78,6 +106,18 @@ export function narisuvayVlizaneto(ekran: HTMLElement, opis: OpisNaVlizaneto): v
     void opis.vlez(imeyl).then((dumi) => {
       if (dumi !== '') kazhi(dumi);
     });
+  });
+  // ВРЪЩАНЕТО · всяка стъпка казва какво е станало (правило 12): тихият отказ
+  // тук е най-скъпият в програмата — човек мисли, че си е върнал годината.
+  ekran.querySelector<HTMLInputElement>('[data-vlizane-kopie]')?.addEventListener('change', (e) => {
+    const fayl = (e.target as HTMLInputElement).files?.[0];
+    const myasto = ekran.querySelector<HTMLElement>('[data-vlizane-kopie-vest]');
+    if (fayl === undefined) return;
+    if (myasto !== null) myasto.textContent = 'Чета файла…';
+    void (async () => {
+      const dumi = await opis.vazstanovi(await fayl.text());
+      if (myasto !== null) myasto.textContent = dumi;
+    })();
   });
   pole?.focus();
 }
