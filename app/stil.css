@@ -1903,6 +1903,33 @@ body.vlacha-shirina {
   grid-column: span 2;
 }
 
+/* ПОДТАБОВЕТЕ · спанът се СМЯТА, не се заковава.
+
+   Дотук тук стоеше `.podtab { grid-column: span 2 }` — вярно за ПЕТТЕ подтаба на
+   Сметки и невярно за всеки друг брой. Управление получи ТРИ (негово, 14.09 ·
+   записи 226 · 227) и с по два трака лентата щеше да свърши на шест от десет.
+
+   Числото идва от `trakoveNaPodtabovete` и стои на самия бутон. Пет → 2·5.
+   Три → 4 + 3 + 3. Сумата е точно десет по конструкция, не по съвпадение. */
+.zalepeno.lenti .podtabove > .podtab[data-traka="1"] {
+  grid-column: span 1;
+}
+.zalepeno.lenti .podtabove > .podtab[data-traka="2"] {
+  grid-column: span 2;
+}
+.zalepeno.lenti .podtabove > .podtab[data-traka="3"] {
+  grid-column: span 3;
+}
+.zalepeno.lenti .podtabove > .podtab[data-traka="4"] {
+  grid-column: span 4;
+}
+.zalepeno.lenti .podtabove > .podtab[data-traka="5"] {
+  grid-column: span 5;
+}
+.zalepeno.lenti .podtabove > .podtab[data-traka="10"] {
+  grid-column: span 10;
+}
+
 /* ЧЕТВЪРТАТА ЛЕНТА · 2 + 2 + 1 + 2 + 2 + 1 = 10. Менютата по теми и двете
    контроли на времето заемат по два трака; единственият превключвател и
    „Начало Сега" — по един. */
@@ -2115,9 +2142,8 @@ body.vlacha-shirina {
   color: var(--zeleno);
 }
 
-/* ПОДТАБЪТ е клетка с ЕДИН ред · и заема две колони, защото е име, не число */
+/* ПОДТАБЪТ е клетка с ЕДИН ред · колко трака заема, казва `data-traka` горе */
 .zalepeno.lenti .podtab {
-  grid-column: span 2;
   align-items: center;
   justify-content: center;
   font-size: 0.85rem;
