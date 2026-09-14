@@ -5,7 +5,7 @@
     "ИЗ": 928,
     "ИН": 263,
     "ВП": 147,
-    "ДЛ": 95
+    "ДЛ": 103
   },
   "redove": [
     {
@@ -1443,9 +1443,57 @@
       "vid": "ДЛ"
     },
     {
+      "staro": "Т69",
+      "fayl": "docs/registar-na-dalga.json",
+      "novo": "ДЛ-Т69",
+      "vid": "ДЛ"
+    },
+    {
       "staro": "Т7",
       "fayl": "docs/registar-na-dalga.json",
       "novo": "ДЛ-Т7",
+      "vid": "ДЛ"
+    },
+    {
+      "staro": "Т70",
+      "fayl": "docs/registar-na-dalga.json",
+      "novo": "ДЛ-Т70",
+      "vid": "ДЛ"
+    },
+    {
+      "staro": "Т71",
+      "fayl": "docs/registar-na-dalga.json",
+      "novo": "ДЛ-Т71",
+      "vid": "ДЛ"
+    },
+    {
+      "staro": "Т72",
+      "fayl": "docs/registar-na-dalga.json",
+      "novo": "ДЛ-Т72",
+      "vid": "ДЛ"
+    },
+    {
+      "staro": "Т73",
+      "fayl": "docs/registar-na-dalga.json",
+      "novo": "ДЛ-Т73",
+      "vid": "ДЛ"
+    },
+    {
+      "staro": "Т74",
+      "fayl": "docs/registar-na-dalga.json",
+      "novo": "ДЛ-Т74",
+      "vid": "ДЛ"
+    },
+    {
+      "staro": "Т75",
+      "fayl": "docs/registar-na-dalga.json",
+      "novo": "ДЛ-Т75",
+      "vid": "ДЛ"
+    },
+    {
+      "staro": "Т76",
+      "fayl": "docs/registar-na-dalga.json",
+      "novo": "ДЛ-Т76",
       "vid": "ДЛ"
     },
     {
